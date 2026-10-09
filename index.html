@@ -11,8 +11,7 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
   margin: 0;
   width: 100%;
   height: 100%;
@@ -28,14 +27,17 @@ body {
 }
 
 #layout {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   display: grid;
   gap: 2px;
   background: #000;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
-.stream-panel {
+.stream-panel,
+.chat-panel {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -43,14 +45,14 @@ body {
   background: #000;
 }
 
-.stream-frame {
+.stream-frame,
+.chat-frame {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   border: 0;
   background: #000;
-  z-index: 1;
 }
 
 .stream-placeholder {
@@ -61,7 +63,7 @@ body {
   align-items: center;
   justify-content: center;
   color: #777;
-  font-size: 24px;
+  font-size: clamp(14px, 2vw, 24px);
   font-weight: bold;
   pointer-events: none;
   background: #000;
@@ -82,6 +84,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity .15s;
+  max-width: calc(100% - 16px);
 }
 
 .stream-panel:hover .stream-settings,
@@ -94,6 +97,7 @@ body {
 .stream-settings input,
 .stream-settings button {
   height: 32px;
+  min-width: 0;
   border: 1px solid #555;
   border-radius: 5px;
   background: #171717;
@@ -107,7 +111,7 @@ body {
 }
 
 .stream-settings input {
-  width: 190px;
+  width: clamp(100px, 15vw, 190px);
   padding: 0 9px;
 }
 
@@ -123,20 +127,8 @@ body {
   background: #9146ff;
 }
 
-.chat-panel {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: #000;
-}
-
-#chat {
-  width: 100%;
-  height: 100%;
-  border: 0;
+.chat-frame {
   display: block;
-  background: #000;
 }
 
 #settingsToggle {
@@ -164,9 +156,11 @@ body {
   z-index: 100001;
   display: none;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  padding: 7px 9px;
-  background: rgba(15,15,15,.96);
+  max-width: calc(100vw - 75px);
+  padding: 9px;
+  background: rgba(15,15,15,.97);
   border: 1px solid #444;
   border-radius: 7px;
 }
@@ -179,7 +173,7 @@ body {
 
 #topbar select,
 #topbar button {
-  height: 32px;
+  height: 34px;
   border: 1px solid #555;
   border-radius: 5px;
   background: #171717;
@@ -195,6 +189,45 @@ body {
   cursor: pointer;
   font-weight: bold;
 }
+
+#chatToggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#chatEnabled {
+  width: 17px;
+  height: 17px;
+  accent-color: #9146ff;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .stream-settings {
+    top: 4px;
+    right: 4px;
+    gap: 3px;
+    padding: 4px;
+  }
+
+  .stream-settings select {
+    width: 75px;
+  }
+
+  .stream-settings input {
+    width: 100px;
+  }
+
+  .stream-settings button {
+    padding: 0 7px;
+  }
+}
 </style>
 </head>
 
@@ -204,10 +237,10 @@ body {
   <div id="layout"></div>
 </div>
 
-<div id="settingsToggle">⚙</div>
+<button id="settingsToggle" title="Settings">⚙</button>
 
 <div id="topbar">
-  <label>STREAMS:</label>
+  <label for="streamCount">STREAMS:</label>
 
   <select id="streamCount">
     <option value="1">1 Stream</option>
@@ -224,13 +257,16 @@ body {
     <option value="12">12 Streams</option>
   </select>
 
+  <label id="chatToggleLabel" for="chatEnabled">
+    <input type="checkbox" id="chatEnabled" checked>
+    CHAT ON
+  </label>
+
   <button id="applyBtn">APPLY</button>
 </div>
 
 <script>
-/* ALWAYS START COMPLETELY FRESH */
-
-localStorage.removeItem("multiStreamData");
+/* ALWAYS START FRESH WHEN THE PAGE IS OPENED */
 
 const DEFAULT_STREAM_COUNT = 3;
 
@@ -248,22 +284,14 @@ let streamData = Array.from(
   () => createEmptyStream()
 );
 
-/* ELEMENTS */
+let chatEnabled = true;
 
 const layout = document.getElementById("layout");
 const settingsToggle = document.getElementById("settingsToggle");
 const topbar = document.getElementById("topbar");
 const streamCount = document.getElementById("streamCount");
+const chatCheckbox = document.getElementById("chatEnabled");
 const applyBtn = document.getElementById("applyBtn");
-
-/* SAVE CURRENT SESSION */
-
-function saveData() {
-  localStorage.setItem(
-    "multiStreamData",
-    JSON.stringify(streamData)
-  );
-}
 
 /* STREAM COUNT */
 
@@ -279,38 +307,7 @@ function setStreamCount(count) {
   }
 }
 
-/* GRID LAYOUT */
-
-function getGrid(count) {
-  switch (count) {
-    case 1:
-      return { columns: 2, rows: 1, chat: "normal" };
-    case 2:
-      return { columns: 2, rows: 2, chat: "full" };
-    case 3:
-      return { columns: 2, rows: 2, chat: "normal" };
-    case 4:
-      return { columns: 2, rows: 3, chat: "full" };
-    case 5:
-      return { columns: 3, rows: 2, chat: "full" };
-    case 6:
-      return { columns: 3, rows: 3, chat: "full" };
-    case 7:
-      return { columns: 4, rows: 2, chat: "full" };
-    case 8:
-      return { columns: 3, rows: 3, chat: "full" };
-    case 9:
-    case 10:
-    case 11:
-      return { columns: 4, rows: 3, chat: "full" };
-    case 12:
-      return { columns: 4, rows: 4, chat: "full" };
-    default:
-      return { columns: 2, rows: 2, chat: "normal" };
-  }
-}
-
-/* YOUTUBE ID */
+/* YOUTUBE VIDEO ID */
 
 function getYouTubeID(input) {
   input = input.trim();
@@ -321,29 +318,43 @@ function getYouTubeID(input) {
 
   try {
     const url = new URL(input);
+    const host = url.hostname.toLowerCase();
 
-    if (url.hostname.includes("youtu.be")) {
-      return url.pathname.substring(1).split("/")[0];
+    let id = "";
+
+    if (
+      host === "youtu.be" ||
+      host === "www.youtu.be"
+    ) {
+      id = url.pathname.split("/").filter(Boolean)[0] || "";
+    } else if (
+      host === "youtube.com" ||
+      host.endsWith(".youtube.com") ||
+      host === "youtube-nocookie.com" ||
+      host.endsWith(".youtube-nocookie.com")
+    ) {
+      if (url.searchParams.has("v")) {
+        id = url.searchParams.get("v");
+      } else {
+        const parts = url.pathname.split("/").filter(Boolean);
+        const index = parts.findIndex(part =>
+          ["embed", "live", "shorts", "v"].includes(part)
+        );
+
+        if (index !== -1) {
+          id = parts[index + 1] || "";
+        }
+      }
     }
 
-    if (url.searchParams.get("v")) {
-      return url.searchParams.get("v");
-    }
+    return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
 
-    const parts = url.pathname.split("/");
-    const index = parts.findIndex(part =>
-      ["live", "shorts", "embed"].includes(part)
-    );
-
-    if (index !== -1 && parts[index + 1]) {
-      return parts[index + 1];
-    }
-  } catch (e) {}
-
-  return null;
+  } catch (e) {
+    return null;
+  }
 }
 
-/* STREAM URL */
+/* BUILD STREAM URL */
 
 function getStreamURL(data) {
   const platform = data.platform;
@@ -355,7 +366,9 @@ function getStreamURL(data) {
     return (
       "https://player.twitch.tv/?" +
       "channel=" + encodeURIComponent(channel) +
-      "&parent=" + encodeURIComponent(window.location.hostname) +
+      "&parent=" + encodeURIComponent(
+        window.location.hostname || "localhost"
+      ) +
       "&autoplay=" + (data.paused ? "false" : "true") +
       "&muted=" + (data.muted ? "true" : "false")
     );
@@ -380,7 +393,9 @@ function getStreamURL(data) {
       encodeURIComponent(videoId) +
       "?autoplay=" + (data.paused ? "0" : "1") +
       "&mute=" + (data.muted ? "1" : "0") +
-      "&rel=0"
+      "&controls=1" +
+      "&rel=0" +
+      "&playsinline=1"
     );
   }
 
@@ -391,7 +406,8 @@ function getStreamURL(data) {
 
 function buildChat() {
   const chat = document.getElementById("chat");
-  if (!chat) return;
+
+  if (!chat || !chatEnabled) return;
 
   const twitchChannels = streamData
     .filter(s => s.platform === "twitch" && s.channel.trim())
@@ -434,25 +450,170 @@ function buildChat() {
   if (merge) params.set("merge", merge);
   if (kickmerge) params.set("kickmerge", kickmerge);
 
-  chat.src = "https://hiviseobs.com/chat/v2/?" + params.toString();
+  chat.src =
+    "https://hiviseobs.com/chat/v2/?" + params.toString();
 }
+
+/* GRID LAYOUT
+   The chat counts as one grid cell when enabled.
+   When disabled, every cell belongs to a stream.
+*/
+
+function getGrid(total) {
+  let columns;
+
+  if (total <= 2) {
+    columns = total;
+  } else if (total <= 4) {
+    columns = 2;
+  } else if (total <= 6) {
+    columns = 3;
+  } else if (total <= 9) {
+    columns = 3;
+  } else {
+    columns = 4;
+  }
+
+  return {
+    columns,
+    rows: Math.ceil(total / columns)
+  };
+}
+
+/* CREATE A STREAM PANEL */
+
+function createStreamPanel(data, index) {
+  const panel = document.createElement("div");
+  panel.className = "stream-panel";
+  panel.dataset.index = index;
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "stream-placeholder";
+  placeholder.textContent = "Insert Stream name";
+
+  if (data.channel.trim()) {
+    placeholder.style.display = "none";
+  }
+
+  panel.appendChild(placeholder);
+
+  const frame = document.createElement("iframe");
+  frame.className = "stream-frame";
+  frame.allow =
+    "autoplay; fullscreen; encrypted-media; picture-in-picture";
+  frame.allowFullscreen = true;
+  frame.loading = "eager";
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.src = getStreamURL(data);
+
+  panel.appendChild(frame);
+
+  const settings = document.createElement("div");
+  settings.className = "stream-settings";
+
+  const platform = document.createElement("select");
+  platform.setAttribute("aria-label", "Stream platform");
+  platform.innerHTML = `
+    <option value="twitch">Twitch</option>
+    <option value="kick">Kick</option>
+    <option value="youtube">YouTube</option>
+  `;
+  platform.value = data.platform;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.value = data.channel;
+  input.placeholder = data.platform === "youtube"
+    ? "YouTube URL / Video ID"
+    : "Stream name";
+  input.setAttribute("aria-label", "Channel name or video URL");
+
+  const load = document.createElement("button");
+  load.textContent = "LOAD";
+
+  platform.addEventListener("change", () => {
+    input.placeholder = platform.value === "youtube"
+      ? "YouTube URL / Video ID"
+      : "Stream name";
+  });
+
+  load.addEventListener("click", () => {
+    const newChannel = input.value.trim();
+    const newPlatform = platform.value;
+
+    if (
+      newPlatform === "youtube" &&
+      newChannel &&
+      !getYouTubeID(newChannel)
+    ) {
+      alert(
+        "That YouTube URL or video ID is not valid. " +
+        "Paste a normal YouTube video, Shorts, or live URL."
+      );
+      return;
+    }
+
+    data.platform = newPlatform;
+    data.channel = newChannel;
+
+    // Every newly loaded stream starts paused and muted.
+    data.paused = true;
+    data.muted = true;
+
+    const newFrame = document.createElement("iframe");
+    newFrame.className = "stream-frame";
+    newFrame.allow =
+      "autoplay; fullscreen; encrypted-media; picture-in-picture";
+    newFrame.allowFullscreen = true;
+    newFrame.loading = "eager";
+    newFrame.referrerPolicy = "strict-origin-when-cross-origin";
+    newFrame.src = getStreamURL(data);
+
+    frame.replaceWith(newFrame);
+
+    placeholder.style.display =
+      data.channel ? "none" : "flex";
+
+    resetAndBuildChat();
+  });
+
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") load.click();
+  });
+
+  settings.appendChild(platform);
+  settings.appendChild(input);
+  settings.appendChild(load);
+  panel.appendChild(settings);
+
+  return panel;
+}
+
+/* REBUILD CHAT AFTER A STREAM CHANGE */
 
 function resetAndBuildChat() {
   const chat = document.getElementById("chat");
-  if (!chat) return;
+
+  if (!chat || !chatEnabled) return;
 
   chat.src = "about:blank";
 
-  setTimeout(buildChat, 100);
+  setTimeout(() => {
+    if (chatEnabled && document.getElementById("chat") === chat) {
+      buildChat();
+    }
+  }, 100);
 }
 
-/* BUILD LAYOUT */
+/* BUILD EVERYTHING */
 
 function buildLayout() {
   layout.innerHTML = "";
 
-  const count = streamData.length;
-  const grid = getGrid(count);
+  const totalCells = streamData.length + (chatEnabled ? 1 : 0);
+  const grid = getGrid(totalCells);
 
   layout.style.gridTemplateColumns =
     `repeat(${grid.columns}, minmax(0, 1fr))`;
@@ -461,105 +622,25 @@ function buildLayout() {
     `repeat(${grid.rows}, minmax(0, 1fr))`;
 
   streamData.forEach((data, index) => {
-    const panel = document.createElement("div");
-    panel.className = "stream-panel";
-    panel.dataset.index = index;
-
-    const placeholder = document.createElement("div");
-    placeholder.className = "stream-placeholder";
-    placeholder.textContent = "Insert Stream name";
-
-    if (data.channel.trim()) {
-      placeholder.style.display = "none";
-    }
-
-    panel.appendChild(placeholder);
-
-    const frame = document.createElement("iframe");
-    frame.className = "stream-frame";
-    frame.allow =
-      "autoplay; fullscreen; encrypted-media; picture-in-picture";
-    frame.src = getStreamURL(data);
-
-    panel.appendChild(frame);
-
-    const settings = document.createElement("div");
-    settings.className = "stream-settings";
-
-    const platform = document.createElement("select");
-    platform.innerHTML = `
-      <option value="twitch">Twitch</option>
-      <option value="kick">Kick</option>
-      <option value="youtube">YouTube</option>
-    `;
-    platform.value = data.platform;
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = data.platform === "youtube"
-      ? "YouTube URL / Video ID"
-      : "Stream name";
-    input.value = data.channel;
-
-    const load = document.createElement("button");
-    load.textContent = "LOAD";
-
-    platform.addEventListener("change", () => {
-      data.platform = platform.value;
-      input.placeholder = data.platform === "youtube"
-        ? "YouTube URL / Video ID"
-        : "Stream name";
-    });
-
-    load.addEventListener("click", () => {
-      data.platform = platform.value;
-      data.channel = input.value.trim();
-
-      /* Every newly loaded stream starts paused and muted. */
-      data.paused = true;
-      data.muted = true;
-
-      saveData();
-
-      const newFrame = document.createElement("iframe");
-      newFrame.className = "stream-frame";
-      newFrame.allow =
-        "autoplay; fullscreen; encrypted-media; picture-in-picture";
-      newFrame.src = getStreamURL(data);
-
-      frame.replaceWith(newFrame);
-
-      placeholder.style.display =
-        data.channel ? "none" : "flex";
-
-      resetAndBuildChat();
-    });
-
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") load.click();
-    });
-
-    settings.appendChild(platform);
-    settings.appendChild(input);
-    settings.appendChild(load);
-    panel.appendChild(settings);
-    layout.appendChild(panel);
+    layout.appendChild(createStreamPanel(data, index));
   });
 
-  const chatPanel = document.createElement("div");
-  chatPanel.className = "chat-panel";
+  if (chatEnabled) {
+    const chatPanel = document.createElement("div");
+    chatPanel.className = "chat-panel";
 
-  if (grid.chat === "full") {
-    chatPanel.style.gridColumn = `1 / span ${grid.columns}`;
+    const chat = document.createElement("iframe");
+    chat.id = "chat";
+    chat.className = "chat-frame";
+    chat.title = "Combined Twitch and Kick chat";
+    chat.loading = "eager";
+    chat.referrerPolicy = "strict-origin-when-cross-origin";
+
+    chatPanel.appendChild(chat);
+    layout.appendChild(chatPanel);
+
+    buildChat();
   }
-
-  const chat = document.createElement("iframe");
-  chat.id = "chat";
-
-  chatPanel.appendChild(chat);
-  layout.appendChild(chatPanel);
-
-  buildChat();
 }
 
 /* SETTINGS MENU */
@@ -571,6 +652,7 @@ settingsToggle.addEventListener("click", e => {
     topbar.style.display = "none";
   } else {
     streamCount.value = streamData.length;
+    chatCheckbox.checked = chatEnabled;
     topbar.style.display = "flex";
   }
 });
@@ -585,18 +667,23 @@ topbar.addEventListener("click", e => {
   e.stopPropagation();
 });
 
-/* APPLY STREAM COUNT */
+/* APPLY STREAM COUNT AND CHAT SETTING */
 
 applyBtn.addEventListener("click", () => {
   setStreamCount(Number(streamCount.value));
-  saveData();
+
+  chatEnabled = chatCheckbox.checked;
+
   buildLayout();
+
   topbar.style.display = "none";
 });
 
-/* INITIAL LOAD: EMPTY STREAMS AND CHAT */
+/* INITIAL LOAD: EMPTY STREAMS, CHAT ENABLED */
 
 streamCount.value = DEFAULT_STREAM_COUNT;
+chatCheckbox.checked = true;
+
 buildLayout();
 </script>
 
