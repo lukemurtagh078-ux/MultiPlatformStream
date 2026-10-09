@@ -65,10 +65,12 @@ html, body {
   background: #000;
 }
 
+/* STREAM SETTINGS: MOVED RIGHT */
+
 .stream-settings {
   position: absolute;
   top: 8px;
-  left: 8px;
+  left: 58px;
   right: auto;
   z-index: 20;
   display: flex;
@@ -81,8 +83,8 @@ html, body {
   border: 1px solid #444;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .15s;
-  max-width: calc(100% - 16px);
+  transition: opacity .2s;
+  max-width: calc(100% - 66px);
 }
 
 .stream-panel:hover .stream-settings,
@@ -125,7 +127,7 @@ html, body {
   background: #9146ff;
 }
 
-.chat-frame { display: block; }
+/* MAIN SETTINGS BUTTON */
 
 #settingsToggle {
   position: fixed;
@@ -143,6 +145,19 @@ html, body {
   justify-content: center;
   font-size: 21px;
   cursor: pointer;
+  opacity: 1;
+  transition: opacity .35s, background .15s;
+}
+
+/* FADE SETTINGS BUTTON WHEN MOUSE IS IDLE */
+
+#settingsToggle.idle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#settingsToggle:hover {
+  background: #9146ff;
 }
 
 #topbar {
@@ -205,9 +220,10 @@ html, body {
 @media (max-width: 600px) {
   .stream-settings {
     top: 4px;
-    left: 4px;
+    left: 54px;
     gap: 3px;
     padding: 4px;
+    max-width: calc(100% - 58px);
   }
 
   .stream-settings select { width: 75px; }
@@ -252,15 +268,11 @@ html, body {
 </div>
 
 <script>
-/* STORAGE
-   Only YouTube videos and their playback positions persist.
-   Twitch and Kick streams are deliberately never restored.
-*/
+/* STORAGE: REMEMBER YOUTUBE ONLY */
 
 const YOUTUBE_STORAGE_KEY = "multiStreamYouTubeProgress";
 const COUNT_STORAGE_KEY = "multiStreamLayoutCount";
 const CHAT_STORAGE_KEY = "multiStreamChatEnabled";
-
 const DEFAULT_STREAM_COUNT = 3;
 
 function readStorage(key, fallback) {
@@ -313,7 +325,7 @@ if (
   youtubeProgress = {};
 }
 
-/* RESTORE YOUTUBE ONLY */
+/* RESTORE YOUTUBE VIDEOS ONLY */
 
 for (let i = 0; i < streamData.length; i++) {
   const saved = youtubeProgress[i];
@@ -337,18 +349,50 @@ const streamCount = document.getElementById("streamCount");
 const chatCheckbox = document.getElementById("chatEnabled");
 const applyBtn = document.getElementById("applyBtn");
 
-const youtubePlayers = new Map();
-let youtubeAPIReady = false;
-let youtubeAPILoading = false;
+/* AUTO-FADE SETTINGS BUTTON */
+
+let idleTimer = null;
+const IDLE_DELAY = 1800;
+
+function showSettingsButton() {
+  settingsToggle.classList.remove("idle");
+
+  clearTimeout(idleTimer);
+
+  idleTimer = setTimeout(() => {
+    if (topbar.style.display !== "flex") {
+      settingsToggle.classList.add("idle");
+    }
+  }, IDLE_DELAY);
+}
+
+["mousemove", "mousedown", "keydown", "wheel", "touchstart"].forEach(event => {
+  document.addEventListener(event, showSettingsButton, { passive: true });
+});
+
+settingsToggle.addEventListener("mouseenter", showSettingsButton);
+
+settingsToggle.addEventListener("click", e => {
+  e.stopPropagation();
+
+  if (topbar.style.display === "flex") {
+    topbar.style.display = "none";
+    showSettingsButton();
+  } else {
+    streamCount.value = streamData.length;
+    chatCheckbox.checked = chatEnabled;
+    topbar.style.display = "flex";
+    settingsToggle.classList.remove("idle");
+    clearTimeout(idleTimer);
+  }
+});
 
 /* YOUTUBE VIDEO ID */
 
 function getYouTubeID(input) {
   input = input.trim();
 
-  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
-    return input;
-  }
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
 
   try {
     const url = new URL(input);
@@ -381,7 +425,7 @@ function getYouTubeID(input) {
   }
 }
 
-/* SAVE YOUTUBE VIDEO AND POSITION */
+/* SAVE YOUTUBE POSITION */
 
 function saveYouTubeProgress(index, videoId, seconds) {
   if (!videoId) return;
@@ -399,26 +443,23 @@ function savePlayerPosition(index, player) {
   try {
     if (
       player &&
-      typeof player.getCurrentTime === "function" &&
-      typeof player.getPlayerState === "function"
+      typeof player.getCurrentTime === "function"
     ) {
       const time = player.getCurrentTime();
+      const data = streamData[index];
 
-      if (Number.isFinite(time)) {
-        const data = streamData[index];
-        if (data && data.platform === "youtube") {
-          saveYouTubeProgress(
-            index,
-            getYouTubeID(data.channel),
-            time
-          );
-        }
+      if (Number.isFinite(time) && data?.platform === "youtube") {
+        saveYouTubeProgress(index, getYouTubeID(data.channel), time);
       }
     }
   } catch (e) {}
 }
 
-/* LOAD YOUTUBE IFRAME API */
+/* YOUTUBE IFRAME API */
+
+let youtubeAPIReady = false;
+let youtubeAPILoading = false;
+const youtubePlayers = new Map();
 
 function loadYouTubeAPI() {
   if (youtubeAPIReady || youtubeAPILoading) return;
@@ -434,15 +475,10 @@ function loadYouTubeAPI() {
   const script = document.createElement("script");
   script.src = "https://www.youtube.com/iframe_api";
   script.async = true;
-
-  script.onerror = function() {
-    youtubeAPILoading = false;
-  };
+  script.onerror = () => { youtubeAPILoading = false; };
 
   document.head.appendChild(script);
 }
-
-/* INITIALIZE YOUTUBE PLAYER AND RESUME POSITION */
 
 function initializeYouTubePlayers() {
   if (!youtubeAPIReady || !window.YT || !YT.Player) return;
@@ -465,7 +501,7 @@ function initializeYouTubePlayers() {
 
     const player = new YT.Player(frame.id, {
       events: {
-        onReady: function(event) {
+        onReady: event => {
           try {
             event.target.mute();
 
@@ -475,7 +511,7 @@ function initializeYouTubePlayers() {
           } catch (e) {}
         },
 
-        onStateChange: function(event) {
+        onStateChange: event => {
           if (
             event.data === YT.PlayerState.PLAYING ||
             event.data === YT.PlayerState.PAUSED ||
@@ -491,8 +527,6 @@ function initializeYouTubePlayers() {
   });
 }
 
-/* SAVE POSITION PERIODICALLY */
-
 setInterval(() => {
   youtubePlayers.forEach((player, frameId) => {
     const frame = document.getElementById(frameId);
@@ -502,8 +536,6 @@ setInterval(() => {
     }
   });
 }, 1000);
-
-/* SAVE BEFORE REFRESH OR NAVIGATION */
 
 window.addEventListener("pagehide", () => {
   youtubePlayers.forEach((player, frameId) => {
@@ -518,40 +550,31 @@ window.addEventListener("pagehide", () => {
 /* STREAM URL */
 
 function getStreamURL(data, index) {
-  const platform = data.platform;
   const channel = data.channel.trim();
 
   if (!channel) return "about:blank";
 
-  if (platform === "twitch") {
-    const parent = window.location.hostname || "localhost";
-
-    return (
-      "https://player.twitch.tv/?" +
+  if (data.platform === "twitch") {
+    return "https://player.twitch.tv/?" +
       "channel=" + encodeURIComponent(channel) +
-      "&parent=" + encodeURIComponent(parent) +
-      "&autoplay=false&muted=true"
-    );
+      "&parent=" + encodeURIComponent(window.location.hostname || "localhost") +
+      "&autoplay=false&muted=true";
   }
 
-  if (platform === "kick") {
-    return (
-      "https://player.kick.com/" +
+  if (data.platform === "kick") {
+    return "https://player.kick.com/" +
       encodeURIComponent(channel) +
-      "?autoplay=false&muted=true"
-    );
+      "?autoplay=false&muted=true";
   }
 
-  if (platform === "youtube") {
+  if (data.platform === "youtube") {
     const videoId = getYouTubeID(channel);
-
     if (!videoId) return "about:blank";
 
     const saved = youtubeProgress[index];
-    const startAt =
-      saved && saved.channel === videoId
-        ? Math.max(0, Math.floor(Number(saved.position) || 0))
-        : 0;
+    const startAt = saved && saved.channel === videoId
+      ? Math.max(0, Math.floor(Number(saved.position) || 0))
+      : 0;
 
     const params = new URLSearchParams({
       autoplay: "0",
@@ -562,30 +585,23 @@ function getStreamURL(data, index) {
       enablejsapi: "1"
     });
 
-    if (window.location.protocol === "http:" ||
-        window.location.protocol === "https:") {
-      params.set("origin", window.location.origin);
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      params.set("origin", location.origin);
     }
 
-    if (startAt > 0) {
-      params.set("start", String(startAt));
-    }
+    if (startAt > 0) params.set("start", String(startAt));
 
-    return (
-      "https://www.youtube.com/embed/" +
-      encodeURIComponent(videoId) +
-      "?" + params.toString()
-    );
+    return "https://www.youtube.com/embed/" +
+      encodeURIComponent(videoId) + "?" + params.toString();
   }
 
   return "about:blank";
 }
 
-/* CHAT */
+/* COMBINED CHAT */
 
 function buildChat() {
   const chat = document.getElementById("chat");
-
   if (!chat || !chatEnabled) return;
 
   const twitchChannels = streamData
@@ -600,11 +616,11 @@ function buildChat() {
   let merge = "";
   let kickmerge = "";
 
-  if (twitchChannels.length > 0) {
+  if (twitchChannels.length) {
     primary = twitchChannels[0];
     merge = twitchChannels.slice(1).join(",");
     kickmerge = kickChannels.join(",");
-  } else if (kickChannels.length > 0) {
+  } else if (kickChannels.length) {
     primary = kickChannels[0];
     kickmerge = kickChannels.slice(1).join(",");
   }
@@ -614,17 +630,17 @@ function buildChat() {
     return;
   }
 
-  const params = new URLSearchParams();
-
-  params.set("channel", primary);
-  params.set("size", "1");
-  params.set("font", "2");
-  params.set("panel", "1");
-  params.set("hvbeta", "1");
-  params.set("highlight_first", "true");
-  params.set("bots", "true");
-  params.set("sysmsg", "false");
-  params.set("esize", "44");
+  const params = new URLSearchParams({
+    channel: primary,
+    size: "1",
+    font: "2",
+    panel: "1",
+    hvbeta: "1",
+    highlight_first: "true",
+    bots: "true",
+    sysmsg: "false",
+    esize: "44"
+  });
 
   if (merge) params.set("merge", merge);
   if (kickmerge) params.set("kickmerge", kickmerge);
@@ -645,11 +661,8 @@ function setStreamCount(count) {
     streamData.length = count;
   }
 
-  // Remove saved YouTube videos belonging to deleted slots.
   Object.keys(youtubeProgress).forEach(key => {
-    if (Number(key) >= count) {
-      delete youtubeProgress[key];
-    }
+    if (Number(key) >= count) delete youtubeProgress[key];
   });
 
   writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
@@ -681,9 +694,7 @@ function createStreamPanel(data, index) {
   placeholder.className = "stream-placeholder";
   placeholder.textContent = "Insert Stream Name or Video ID";
 
-  if (data.channel.trim()) {
-    placeholder.style.display = "none";
-  }
+  if (data.channel.trim()) placeholder.style.display = "none";
 
   panel.appendChild(placeholder);
 
@@ -696,8 +707,7 @@ function createStreamPanel(data, index) {
     frame.classList.add("youtube-frame");
   }
 
-  frame.allow =
-    "autoplay; fullscreen; encrypted-media; picture-in-picture";
+  frame.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
   frame.allowFullscreen = true;
   frame.loading = "eager";
   frame.referrerPolicy = "strict-origin-when-cross-origin";
@@ -725,7 +735,6 @@ function createStreamPanel(data, index) {
   input.placeholder = data.platform === "youtube"
     ? "YouTube URL / Video ID"
     : "Stream name";
-  input.setAttribute("aria-label", "Stream name or YouTube URL");
 
   const load = document.createElement("button");
   load.textContent = "LOAD";
@@ -749,13 +758,11 @@ function createStreamPanel(data, index) {
       return;
     }
 
-    // Save the old YouTube position before replacing this panel.
     if (data.platform === "youtube") {
       const oldPlayer = youtubePlayers.get(frame.id);
       if (oldPlayer) savePlayerPosition(index, oldPlayer);
     }
 
-    // Remove any old player instance for this slot.
     youtubePlayers.delete(frame.id);
 
     data.platform = newPlatform;
@@ -763,7 +770,6 @@ function createStreamPanel(data, index) {
     data.paused = true;
     data.muted = true;
 
-    // Remember YouTube videos only.
     if (newPlatform === "youtube" && newChannel) {
       const videoId = getYouTubeID(newChannel);
       const oldSaved = youtubeProgress[index];
@@ -776,7 +782,6 @@ function createStreamPanel(data, index) {
       writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
     }
 
-    // Rebuild so the correct player type and controls are created.
     buildLayout();
   });
 
@@ -795,13 +800,9 @@ function createStreamPanel(data, index) {
 /* BUILD LAYOUT */
 
 function buildLayout() {
-  // Save positions before replacing existing iframe elements.
   youtubePlayers.forEach((player, frameId) => {
     const frame = document.getElementById(frameId);
-
-    if (frame) {
-      savePlayerPosition(Number(frame.dataset.index), player);
-    }
+    if (frame) savePlayerPosition(Number(frame.dataset.index), player);
   });
 
   youtubePlayers.clear();
@@ -832,49 +833,25 @@ function buildLayout() {
 
     chatPanel.appendChild(chat);
     layout.appendChild(chatPanel);
-
     buildChat();
   }
 
-  if (streamData.some(
-    (data, index) =>
-      data.platform === "youtube" &&
-      data.channel.trim() &&
-      !!document.getElementById("youtube-player-" + index)
-  )) {
+  if (streamData.some(s => s.platform === "youtube" && s.channel.trim())) {
     loadYouTubeAPI();
-
-    if (youtubeAPIReady) {
-      initializeYouTubePlayers();
-    }
+    if (youtubeAPIReady) initializeYouTubePlayers();
   }
 }
 
-/* SETTINGS MENU */
-
-settingsToggle.addEventListener("click", e => {
-  e.stopPropagation();
-
-  if (topbar.style.display === "flex") {
-    topbar.style.display = "none";
-  } else {
-    streamCount.value = streamData.length;
-    chatCheckbox.checked = chatEnabled;
-    topbar.style.display = "flex";
-  }
-});
+/* TOPBAR EVENTS */
 
 document.addEventListener("click", e => {
   if (!topbar.contains(e.target) && e.target !== settingsToggle) {
     topbar.style.display = "none";
+    showSettingsButton();
   }
 });
 
-topbar.addEventListener("click", e => {
-  e.stopPropagation();
-});
-
-/* APPLY SETTINGS */
+topbar.addEventListener("click", e => e.stopPropagation());
 
 applyBtn.addEventListener("click", () => {
   setStreamCount(Number(streamCount.value));
@@ -885,7 +862,9 @@ applyBtn.addEventListener("click", () => {
   writeStorage(CHAT_STORAGE_KEY, chatEnabled);
 
   buildLayout();
+
   topbar.style.display = "none";
+  showSettingsButton();
 });
 
 /* INITIAL LOAD */
@@ -894,6 +873,7 @@ streamCount.value = DEFAULT_COUNT;
 chatCheckbox.checked = chatEnabled;
 
 buildLayout();
+showSettingsButton();
 </script>
 
 </body>
