@@ -15,27 +15,24 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: #000;
-  color: white;
   font-family: Arial, sans-serif;
 }
 
-#app {
-  display: flex;
+#streamPage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+#layout {
   width: 100%;
   height: 100%;
-  background: #000;
-}
-
-#streams {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
   display: grid;
-  gap: 3px;
+  gap: 2px;
   background: #000;
 }
 
-.stream {
+.stream-panel, .chat-panel {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -43,215 +40,214 @@ html, body {
   background: #000;
 }
 
-.stream iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
-}
-
-.placeholder {
+.stream-frame, .chat-frame {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #aaa;
-  font-size: 18px;
-  pointer-events: none;
-  text-align: center;
-  padding: 20px;
-}
-
-.stream-controls {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 5;
-  display: flex;
-  gap: 5px;
-  opacity: 0;
-  transition: opacity .2s ease;
-}
-
-.stream:hover .stream-controls {
-  opacity: 1;
-}
-
-.stream-controls button {
-  border: 0;
-  background: rgba(25,25,25,.9);
-  color: white;
-  border-radius: 5px;
-  padding: 7px 10px;
-  cursor: pointer;
-}
-
-#settingsToggle {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1001;
-  background: rgba(30,30,30,.95);
-  color: white;
-  border: 1px solid #555;
-  border-radius: 7px;
-  width: 38px;
-  height: 38px;
-  font-size: 20px;
-  cursor: pointer;
-  opacity: 1;
-  visibility: visible;
-  transition: opacity .35s ease, visibility .35s ease;
-}
-
-#settingsToggle.hidden-ui {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-#topbar {
-  position: fixed;
-  top: 12px;
-  left: 58px;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  max-width: calc(100vw - 75px);
-  padding: 9px;
-  border-radius: 8px;
-  background: rgba(18,18,18,.97);
-  border: 1px solid #444;
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition: opacity .35s ease, visibility .35s ease, transform .35s ease;
-}
-
-#topbar.hidden-ui {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-5px);
-}
-
-#topbar input,
-#topbar select {
-  background: #242424;
-  color: white;
-  border: 1px solid #555;
-  border-radius: 5px;
-  padding: 9px;
-  min-width: 130px;
-  outline: none;
-}
-
-#topbar input {
-  width: 220px;
-}
-
-#topbar button {
-  background: #333;
-  color: white;
-  border: 1px solid #555;
-  border-radius: 5px;
-  padding: 9px 12px;
-  cursor: pointer;
-}
-
-#topbar button:hover,
-.stream-controls button:hover {
-  background: #505050;
-}
-
-#topbar .hint {
-  width: 100%;
-  font-size: 11px;
-  color: #aaa;
-  padding-left: 2px;
-}
-
-#chat {
-  width: 340px;
-  height: 100%;
-  border: 0;
-  background: #111;
-  display: none;
-}
-
-#chat.visible {
-  display: block;
-}
-
-#deathView {
-  display: none;
   width: 100%;
   height: 100%;
   border: 0;
   background: #000;
 }
 
-#deathView.visible {
-  display: block;
+.stream-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: clamp(14px, 2vw, 24px);
+  font-weight: bold;
+  text-align: center;
+  padding: 10px;
+  pointer-events: none;
+  background: #000;
 }
 
-#backButton {
-  position: fixed;
-  right: 15px;
-  top: 15px;
-  z-index: 1002;
-  display: none;
-  border: 0;
+/* STREAM SETTINGS */
+
+.stream-settings {
+  position: absolute;
+  top: 8px;
+  left: 58px;
+  right: auto;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  padding: 6px;
   border-radius: 7px;
-  padding: 10px 15px;
-  background: rgba(30,30,30,.95);
-  color: white;
+  background: rgba(15,15,15,.94);
+  border: 1px solid #444;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s;
+  max-width: calc(100% - 66px);
+}
+
+/* NEW: settings fade in/out with the main settings button */
+.stream-settings.ui-idle {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.stream-settings.ui-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.stream-settings select,
+.stream-settings input,
+.stream-settings button {
+  height: 32px;
+  min-width: 0;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #171717;
+  color: #fff;
+  outline: none;
+}
+
+.stream-settings select {
+  width: 95px;
+  padding: 0 5px;
+}
+
+.stream-settings input {
+  width: clamp(100px, 15vw, 190px);
+  padding: 0 9px;
+}
+
+.stream-settings button {
+  padding: 0 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.stream-settings button:hover,
+#settingsToggle:hover,
+#topbar button:hover {
+  background: #9146ff;
+}
+
+/* MAIN SETTINGS BUTTON */
+
+#settingsToggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100000;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #444;
+  border-radius: 7px;
+  background: rgba(20,20,20,.92);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity .35s, background .15s;
+}
+
+#settingsToggle.idle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#settingsToggle:hover {
+  background: #9146ff;
+}
+
+#topbar {
+  position: fixed;
+  top: 10px;
+  left: 60px;
+  z-index: 100001;
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100vw - 75px);
+  padding: 9px;
+  background: rgba(15,15,15,.97);
+  border: 1px solid #444;
+  border-radius: 7px;
+}
+
+#topbar label {
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+#topbar select,
+#topbar button {
+  height: 34px;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #171717;
+  color: #fff;
+}
+
+#topbar select { padding: 0 8px; }
+
+#topbar button {
+  padding: 0 13px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#chatToggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#chatEnabled {
+  width: 17px;
+  height: 17px;
+  accent-color: #9146ff;
   cursor: pointer;
 }
 
-#backButton.visible {
-  display: block;
-}
-
-@media (max-width: 700px) {
-  #topbar {
+@media (max-width: 600px) {
+  .stream-settings {
+    top: 4px;
     left: 54px;
-    right: 8px;
-    max-width: none;
+    gap: 3px;
+    padding: 4px;
+    max-width: calc(100% - 58px);
   }
 
-  #topbar input {
-    width: 100%;
-    min-width: 0;
-  }
-
-  #topbar select {
-    min-width: 0;
-  }
-
-  #chat {
-    width: 40%;
-  }
+  .stream-settings select { width: 75px; }
+  .stream-settings input { width: 100px; }
+  .stream-settings button { padding: 0 7px; }
 }
 </style>
 </head>
 
 <body>
-<div id="app">
-  <div id="streams"></div>
-  <iframe id="chat" title="Combined chat"
-    src="https://hiviseobs.com/minecraft"></iframe>
-  <iframe id="deathView" title="Last death"
-    src="https://hiviseobs.com/lastdeath"></iframe>
+
+<div id="streamPage">
+  <div id="layout"></div>
 </div>
 
-<button id="settingsToggle" title="Stream settings">⚙</button>
+<button id="settingsToggle" title="Settings">⚙</button>
 
 <div id="topbar">
-  <select id="streamCount" aria-label="Number of streams">
+  <label for="streamCount">STREAMS:</label>
+
+  <select id="streamCount">
     <option value="1">1 Stream</option>
     <option value="2">2 Streams</option>
     <option value="3">3 Streams</option>
@@ -266,428 +262,655 @@ html, body {
     <option value="12">12 Streams</option>
   </select>
 
-  <select id="platform" aria-label="Platform">
-    <option value="twitch">Twitch</option>
-    <option value="kick">Kick</option>
-    <option value="youtube">YouTube</option>
-  </select>
+  <label id="chatToggleLabel" for="chatEnabled">
+    <input type="checkbox" id="chatEnabled" checked>
+    CHAT ON
+  </label>
 
-  <input id="streamName" type="text"
-    placeholder="Insert Stream Name or Video ID"
-    autocomplete="off">
-
-  <button id="addStream">Add / Update</button>
-  <button id="chatToggle">Toggle Chat</button>
-  <button id="deathToggle">Last Death ↗</button>
-  <button id="closeSettings">Close</button>
-
-  <div class="hint">
-    Twitch/Kick streams reset on refresh. YouTube videos and playback positions are saved.
-    Streams start paused/muted where supported.
-  </div>
+  <button id="applyBtn">APPLY</button>
 </div>
 
-<button id="backButton">← Back to Streams</button>
-
 <script>
-const streamsEl = document.getElementById("streams");
-const streamCountEl = document.getElementById("streamCount");
-const platformEl = document.getElementById("platform");
-const streamNameEl = document.getElementById("streamName");
-const topbar = document.getElementById("topbar");
+/* STORAGE: REMEMBER YOUTUBE ONLY */
+
+const YOUTUBE_STORAGE_KEY = "multiStreamYouTubeProgress";
+const COUNT_STORAGE_KEY = "multiStreamLayoutCount";
+const CHAT_STORAGE_KEY = "multiStreamChatEnabled";
+const DEFAULT_STREAM_COUNT = 3;
+
+function readStorage(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : JSON.parse(value);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {}
+}
+
+function createEmptyStream() {
+  return {
+    platform: "twitch",
+    channel: "",
+    muted: true,
+    paused: true
+  };
+}
+
+const savedCount = Number(
+  readStorage(COUNT_STORAGE_KEY, DEFAULT_STREAM_COUNT)
+);
+
+const DEFAULT_COUNT =
+  Number.isInteger(savedCount) && savedCount >= 1 && savedCount <= 12
+    ? savedCount
+    : DEFAULT_STREAM_COUNT;
+
+let chatEnabled = readStorage(CHAT_STORAGE_KEY, true) !== false;
+
+let streamData = Array.from(
+  { length: DEFAULT_COUNT },
+  () => createEmptyStream()
+);
+
+let youtubeProgress = readStorage(YOUTUBE_STORAGE_KEY, {});
+
+if (
+  !youtubeProgress ||
+  typeof youtubeProgress !== "object" ||
+  Array.isArray(youtubeProgress)
+) {
+  youtubeProgress = {};
+}
+
+/* RESTORE YOUTUBE VIDEOS ONLY */
+
+for (let i = 0; i < streamData.length; i++) {
+  const saved = youtubeProgress[i];
+
+  if (saved && saved.platform === "youtube" && saved.channel) {
+    streamData[i] = {
+      platform: "youtube",
+      channel: saved.channel,
+      muted: true,
+      paused: true
+    };
+  }
+}
+
+/* ELEMENTS */
+
+const layout = document.getElementById("layout");
 const settingsToggle = document.getElementById("settingsToggle");
-const chat = document.getElementById("chat");
-const deathView = document.getElementById("deathView");
-const backButton = document.getElementById("backButton");
+const topbar = document.getElementById("topbar");
+const streamCount = document.getElementById("streamCount");
+const chatCheckbox = document.getElementById("chatEnabled");
+const applyBtn = document.getElementById("applyBtn");
 
-let streamData = [];
-let youtubePlayers = {};
+/* SETTINGS AUTO-FADE */
+
 let idleTimer = null;
-let deathPageOpen = false;
+const IDLE_DELAY = 1800;
+let settingsPinnedOpen = false;
 
-const YT_STORAGE_KEY = "multistream_youtube_state_v2";
-const COUNT_STORAGE_KEY = "multistream_count_v2";
-const CHAT_STORAGE_KEY = "multistream_chat_v2";
+function setStreamSettingsVisibility(visible) {
+  document.querySelectorAll(".stream-settings").forEach(settings => {
+    settings.classList.toggle("ui-idle", !visible);
+    settings.classList.toggle("ui-visible", visible);
+  });
+}
+
+function showSettingsButton() {
+  settingsToggle.classList.remove("idle");
+  setStreamSettingsVisibility(true);
+
+  clearTimeout(idleTimer);
+
+  if (settingsPinnedOpen || topbar.style.display === "flex") return;
+
+  idleTimer = setTimeout(() => {
+    if (topbar.style.display !== "flex" && !settingsPinnedOpen) {
+      settingsToggle.classList.add("idle");
+      setStreamSettingsVisibility(false);
+    }
+  }, IDLE_DELAY);
+}
+
+function hideSettingsButton() {
+  clearTimeout(idleTimer);
+  settingsPinnedOpen = false;
+  settingsToggle.classList.add("idle");
+  setStreamSettingsVisibility(false);
+}
+
+["mousemove", "mousedown", "keydown", "wheel", "touchstart"].forEach(event => {
+  document.addEventListener(event, showSettingsButton, { passive: true });
+});
+
+settingsToggle.addEventListener("mouseenter", showSettingsButton);
+
+settingsToggle.addEventListener("click", e => {
+  e.stopPropagation();
+
+  if (topbar.style.display === "flex") {
+    topbar.style.display = "none";
+    settingsPinnedOpen = false;
+    showSettingsButton();
+  } else {
+    streamCount.value = streamData.length;
+    chatCheckbox.checked = chatEnabled;
+    topbar.style.display = "flex";
+    settingsPinnedOpen = true;
+    settingsToggle.classList.remove("idle");
+    setStreamSettingsVisibility(true);
+    clearTimeout(idleTimer);
+  }
+});
+
+/* YOUTUBE VIDEO ID */
 
 function getYouTubeID(input) {
-  input = (input || "").trim();
-  if (!input) return "";
+  input = input.trim();
 
   if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
 
   try {
     const url = new URL(input);
-    if (url.hostname.includes("youtu.be")) {
-      return url.pathname.slice(1).split("/")[0];
+    const host = url.hostname.toLowerCase();
+    let id = "";
+
+    if (host === "youtu.be" || host === "www.youtu.be") {
+      id = url.pathname.split("/").filter(Boolean)[0] || "";
+    } else if (
+      host === "youtube.com" ||
+      host.endsWith(".youtube.com") ||
+      host === "youtube-nocookie.com" ||
+      host.endsWith(".youtube-nocookie.com")
+    ) {
+      if (url.searchParams.has("v")) {
+        id = url.searchParams.get("v");
+      } else {
+        const parts = url.pathname.split("/").filter(Boolean);
+        const index = parts.findIndex(part =>
+          ["embed", "live", "shorts", "v"].includes(part)
+        );
+
+        if (index !== -1) id = parts[index + 1] || "";
+      }
     }
 
-    if (url.searchParams.get("v")) {
-      return url.searchParams.get("v");
-    }
-
-    const parts = url.pathname.split("/").filter(Boolean);
-    const embedIndex = parts.findIndex(p =>
-      ["embed", "shorts", "live"].includes(p)
-    );
-
-    if (embedIndex !== -1) return parts[embedIndex + 1] || "";
-  } catch (e) {}
-
-  return input;
-}
-
-function loadSavedYouTube() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(YT_STORAGE_KEY) || "[]");
-    return Array.isArray(saved) ? saved : [];
+    return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
   } catch (e) {
-    return [];
+    return null;
   }
 }
 
-function saveYouTubeProgress() {
-  const saved = [];
+/* SAVE YOUTUBE POSITION */
 
-  streamData.forEach((stream, index) => {
-    if (stream.platform !== "youtube" || !stream.channel) return;
+function saveYouTubeProgress(index, videoId, seconds) {
+  if (!videoId) return;
 
-    let position = Number(stream.position || 0);
-    const player = youtubePlayers[index];
+  youtubeProgress[index] = {
+    platform: "youtube",
+    channel: videoId,
+    position: Math.max(0, Number(seconds) || 0)
+  };
 
-    try {
-      if (player && typeof player.getCurrentTime === "function") {
-        position = player.getCurrentTime() || position;
-      }
-    } catch (e) {}
+  writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
+}
 
-    saved.push({
-      platform: "youtube",
-      channel: stream.channel,
-      position: Math.max(0, position)
-    });
-  });
-
+function savePlayerPosition(index, player) {
   try {
-    localStorage.setItem(YT_STORAGE_KEY, JSON.stringify(saved));
+    if (
+      player &&
+      typeof player.getCurrentTime === "function"
+    ) {
+      const time = player.getCurrentTime();
+      const data = streamData[index];
+
+      if (Number.isFinite(time) && data?.platform === "youtube") {
+        saveYouTubeProgress(index, getYouTubeID(data.channel), time);
+      }
+    }
   } catch (e) {}
 }
 
-function buildEmbedURL(platform, channel, index) {
-  const parent = location.hostname || "localhost";
+/* YOUTUBE IFRAME API */
 
-  if (platform === "twitch") {
-    return "https://player.twitch.tv/?channel=" +
-      encodeURIComponent(channel) +
-      "&parent=" + encodeURIComponent(parent) +
+let youtubeAPIReady = false;
+let youtubeAPILoading = false;
+const youtubePlayers = new Map();
+
+function loadYouTubeAPI() {
+  if (youtubeAPIReady || youtubeAPILoading) return;
+
+  youtubeAPILoading = true;
+
+  window.onYouTubeIframeAPIReady = function() {
+    youtubeAPIReady = true;
+    youtubeAPILoading = false;
+    initializeYouTubePlayers();
+  };
+
+  const script = document.createElement("script");
+  script.src = "https://www.youtube.com/iframe_api";
+  script.async = true;
+  script.onerror = () => { youtubeAPILoading = false; };
+
+  document.head.appendChild(script);
+}
+
+function initializeYouTubePlayers() {
+  if (!youtubeAPIReady || !window.YT || !YT.Player) return;
+
+  document.querySelectorAll(".youtube-frame").forEach(frame => {
+    if (youtubePlayers.has(frame.id)) return;
+
+    const index = Number(frame.dataset.index);
+    const data = streamData[index];
+
+    if (!data || data.platform !== "youtube") return;
+
+    const videoId = getYouTubeID(data.channel);
+    if (!videoId) return;
+
+    const saved = youtubeProgress[index];
+    const startAt = saved && saved.channel === videoId
+      ? Math.max(0, Number(saved.position) || 0)
+      : 0;
+
+    const player = new YT.Player(frame.id, {
+      events: {
+        onReady: event => {
+          try {
+            event.target.mute();
+
+            if (startAt > 0) {
+              event.target.seekTo(startAt, true);
+            }
+          } catch (e) {}
+        },
+
+        onStateChange: event => {
+          if (
+            event.data === YT.PlayerState.PLAYING ||
+            event.data === YT.PlayerState.PAUSED ||
+            event.data === YT.PlayerState.ENDED
+          ) {
+            savePlayerPosition(index, event.target);
+          }
+        }
+      }
+    });
+
+    youtubePlayers.set(frame.id, player);
+  });
+}
+
+setInterval(() => {
+  youtubePlayers.forEach((player, frameId) => {
+    const frame = document.getElementById(frameId);
+
+    if (frame) {
+      savePlayerPosition(Number(frame.dataset.index), player);
+    }
+  });
+}, 1000);
+
+window.addEventListener("pagehide", () => {
+  youtubePlayers.forEach((player, frameId) => {
+    const frame = document.getElementById(frameId);
+
+    if (frame) {
+      savePlayerPosition(Number(frame.dataset.index), player);
+    }
+  });
+});
+
+/* STREAM URL */
+
+function getStreamURL(data, index) {
+  const channel = data.channel.trim();
+
+  if (!channel) return "about:blank";
+
+  if (data.platform === "twitch") {
+    return "https://player.twitch.tv/?" +
+      "channel=" + encodeURIComponent(channel) +
+      "&parent=" + encodeURIComponent(window.location.hostname || "localhost") +
       "&autoplay=false&muted=true";
   }
 
-  if (platform === "kick") {
+  if (data.platform === "kick") {
     return "https://player.kick.com/" +
       encodeURIComponent(channel) +
       "?autoplay=false&muted=true";
   }
 
-  if (platform === "youtube") {
-    const videoID = getYouTubeID(channel);
-    const start = Math.floor(Number(streamData[index]?.position || 0));
+  if (data.platform === "youtube") {
+    const videoId = getYouTubeID(channel);
+    if (!videoId) return "about:blank";
+
+    const saved = youtubeProgress[index];
+    const startAt = saved && saved.channel === videoId
+      ? Math.max(0, Math.floor(Number(saved.position) || 0))
+      : 0;
+
+    const params = new URLSearchParams({
+      autoplay: "0",
+      mute: "1",
+      controls: "1",
+      rel: "0",
+      playsinline: "1",
+      enablejsapi: "1"
+    });
+
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      params.set("origin", location.origin);
+    }
+
+    if (startAt > 0) params.set("start", String(startAt));
 
     return "https://www.youtube.com/embed/" +
-      encodeURIComponent(videoID) +
-      "?enablejsapi=1&autoplay=0&mute=1&controls=1&start=" + start +
-      "&playsinline=1&rel=0&origin=" +
-      encodeURIComponent(location.origin);
+      encodeURIComponent(videoId) + "?" + params.toString();
   }
 
-  return "";
+  return "about:blank";
 }
 
-function makeStream(index) {
-  const stream = document.createElement("div");
-  stream.className = "stream";
-  stream.dataset.index = index;
+/* COMBINED CHAT */
 
-  const controls = document.createElement("div");
-  controls.className = "stream-controls";
+function buildChat() {
+  const chat = document.getElementById("chat");
+  if (!chat || !chatEnabled) return;
 
-  const pauseButton = document.createElement("button");
-  pauseButton.textContent = "Pause";
-  pauseButton.title = "Pause YouTube video";
-  pauseButton.addEventListener("click", () => {
-    const player = youtubePlayers[index];
-    try {
-      if (player && player.pauseVideo) player.pauseVideo();
-    } catch (e) {}
-  });
+  const twitchChannels = streamData
+    .filter(s => s.platform === "twitch" && s.channel.trim())
+    .map(s => s.channel.trim());
 
-  const muteButton = document.createElement("button");
-  muteButton.textContent = "Mute";
-  muteButton.title = "Mute YouTube video";
-  muteButton.addEventListener("click", () => {
-    const player = youtubePlayers[index];
-    try {
-      if (player && player.mute) player.mute();
-    } catch (e) {}
-  });
+  const kickChannels = streamData
+    .filter(s => s.platform === "kick" && s.channel.trim())
+    .map(s => s.channel.trim());
 
-  controls.append(pauseButton, muteButton);
-  stream.appendChild(controls);
+  let primary = "";
+  let merge = "";
+  let kickmerge = "";
 
-  const data = streamData[index];
-
-  if (!data || !data.channel) {
-    const placeholder = document.createElement("div");
-    placeholder.className = "placeholder";
-    placeholder.textContent = "Insert Stream Name or Video ID";
-    stream.appendChild(placeholder);
-    return stream;
+  if (twitchChannels.length) {
+    primary = twitchChannels[0];
+    merge = twitchChannels.slice(1).join(",");
+    kickmerge = kickChannels.join(",");
+  } else if (kickChannels.length) {
+    primary = kickChannels[0];
+    kickmerge = kickChannels.slice(1).join(",");
   }
 
-  const iframe = document.createElement("iframe");
-  iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-  iframe.allowFullscreen = true;
-  iframe.title = data.platform + " stream";
-
-  if (data.platform === "youtube") {
-    iframe.id = "youtube-player-" + index;
-  }
-
-  iframe.src = buildEmbedURL(data.platform, data.channel, index);
-  stream.appendChild(iframe);
-
-  return stream;
-}
-
-function updateGrid() {
-  const count = Number(streamCountEl.value) || 1;
-  streamsEl.style.gridTemplateColumns =
-    "repeat(" + Math.ceil(Math.sqrt(count)) + ", minmax(0, 1fr))";
-  streamsEl.style.gridTemplateRows =
-    "repeat(" + Math.ceil(count / Math.ceil(Math.sqrt(count))) + ", minmax(0, 1fr))";
-}
-
-function buildLayout() {
-  saveYouTubeProgress();
-  youtubePlayers = {};
-
-  const count = Number(streamCountEl.value) || 1;
-
-  while (streamData.length < count) {
-    streamData.push({ platform: "", channel: "", position: 0 });
-  }
-
-  streamData = streamData.slice(0, count);
-  streamsEl.innerHTML = "";
-
-  for (let i = 0; i < count; i++) {
-    streamsEl.appendChild(makeStream(i));
-  }
-
-  updateGrid();
-  initYouTubeAPI();
-}
-
-function initYouTubeAPI() {
-  if (!streamData.some(s => s.platform === "youtube" && s.channel)) return;
-
-  if (window.YT && window.YT.Player) {
-    createYouTubePlayers();
+  if (!primary) {
+    chat.src = "about:blank";
     return;
   }
 
-  if (!document.getElementById("youtube-api-script")) {
-    const tag = document.createElement("script");
-    tag.id = "youtube-api-script";
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(tag);
-  }
-
-  window.onYouTubeIframeAPIReady = createYouTubePlayers;
-}
-
-function createYouTubePlayers() {
-  streamData.forEach((stream, index) => {
-    if (stream.platform !== "youtube" || !stream.channel) return;
-
-    const element = document.getElementById("youtube-player-" + index);
-    if (!element) return;
-
-    try {
-      youtubePlayers[index] = new YT.Player(element, {
-        events: {
-          onReady: event => {
-            try {
-              event.target.mute();
-              if (stream.position > 0) {
-                event.target.seekTo(stream.position, true);
-              }
-              event.target.pauseVideo();
-            } catch (e) {}
-          },
-          onStateChange: () => saveYouTubeProgress()
-        }
-      });
-    } catch (e) {}
+  const params = new URLSearchParams({
+    channel: primary,
+    size: "1",
+    font: "2",
+    panel: "1",
+    hvbeta: "1",
+    highlight_first: "true",
+    bots: "true",
+    sysmsg: "false",
+    esize: "44"
   });
+
+  if (merge) params.set("merge", merge);
+  if (kickmerge) params.set("kickmerge", kickmerge);
+
+  chat.src = "https://hiviseobs.com/chat/v2/?" + params.toString();
 }
 
-document.getElementById("addStream").addEventListener("click", () => {
-  const index = Number(streamCountEl.value) - 1;
-  const platform = platformEl.value;
-  let channel = streamNameEl.value.trim();
+/* STREAM COUNT */
 
-  if (!channel) return;
+function setStreamCount(count) {
+  count = Number(count);
 
-  if (platform === "youtube") {
-    channel = getYouTubeID(channel);
-    if (!channel) return;
+  while (streamData.length < count) {
+    streamData.push(createEmptyStream());
   }
 
-  saveYouTubeProgress();
+  if (streamData.length > count) {
+    streamData.length = count;
+  }
 
-  streamData[index] = {
-    platform,
-    channel,
-    position: 0
+  Object.keys(youtubeProgress).forEach(key => {
+    if (Number(key) >= count) delete youtubeProgress[key];
+  });
+
+  writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
+}
+
+/* GRID */
+
+function getGrid(total) {
+  let columns;
+
+  if (total <= 2) columns = total;
+  else if (total <= 4) columns = 2;
+  else if (total <= 9) columns = 3;
+  else columns = 4;
+
+  return {
+    columns,
+    rows: Math.ceil(total / columns)
   };
-
-  streamNameEl.value = "";
-  buildLayout();
-  showSettingsButton();
-});
-
-streamCountEl.addEventListener("change", () => {
-  try {
-    localStorage.setItem(COUNT_STORAGE_KEY, streamCountEl.value);
-  } catch (e) {}
-  buildLayout();
-  showSettingsButton();
-});
-
-document.getElementById("chatToggle").addEventListener("click", () => {
-  chat.classList.toggle("visible");
-  try {
-    localStorage.setItem(CHAT_STORAGE_KEY, chat.classList.contains("visible") ? "1" : "0");
-  } catch (e) {}
-  showSettingsButton();
-});
-
-document.getElementById("deathToggle").addEventListener("click", openDeathPage);
-
-document.getElementById("closeSettings").addEventListener("click", () => {
-  hideSettingsButton();
-});
-
-settingsToggle.addEventListener("click", () => {
-  if (topbar.classList.contains("hidden-ui")) {
-    showSettingsButton();
-  } else {
-    hideSettingsButton();
-  }
-});
-
-function hideSettingsButton() {
-  clearTimeout(idleTimer);
-  topbar.classList.add("hidden-ui");
-  settingsToggle.classList.add("hidden-ui");
 }
 
-function showSettingsButton() {
-  clearTimeout(idleTimer);
-  topbar.classList.remove("hidden-ui");
-  settingsToggle.classList.remove("hidden-ui");
+/* STREAM PANEL */
 
-  if (deathPageOpen) return;
+function createStreamPanel(data, index) {
+  const panel = document.createElement("div");
+  panel.className = "stream-panel";
 
-  idleTimer = setTimeout(() => {
-    // Hide BOTH UI elements at the same time.
-    topbar.classList.add("hidden-ui");
-    settingsToggle.classList.add("hidden-ui");
-  }, 1800);
-}
+  const placeholder = document.createElement("div");
+  placeholder.className = "stream-placeholder";
+  placeholder.textContent = "Insert Stream Name or Video ID";
 
-function handleActivity() {
-  if (deathPageOpen) return;
-  showSettingsButton();
-}
+  if (data.channel.trim()) placeholder.style.display = "none";
 
-["mousemove", "mousedown", "keydown", "wheel", "touchstart"].forEach(eventName => {
-  document.addEventListener(eventName, handleActivity, { passive: true });
-});
+  panel.appendChild(placeholder);
 
-function openDeathPage() {
-  saveYouTubeProgress();
-  deathPageOpen = true;
+  const frame = document.createElement("iframe");
+  frame.className = "stream-frame";
 
-  streamsEl.style.display = "none";
-  chat.style.display = "none";
-  chat.classList.remove("visible");
-
-  deathView.classList.add("visible");
-  backButton.classList.add("visible");
-
-  topbar.classList.add("hidden-ui");
-  settingsToggle.classList.add("hidden-ui");
-  clearTimeout(idleTimer);
-}
-
-function closeDeathPage() {
-  deathPageOpen = false;
-
-  deathView.classList.remove("visible");
-  streamsEl.style.display = "grid";
-
-  if (localStorage.getItem(CHAT_STORAGE_KEY) === "1") {
-    chat.classList.add("visible");
-    chat.style.display = "block";
-  } else {
-    chat.classList.remove("visible");
-    chat.style.display = "none";
+  if (data.platform === "youtube" && data.channel.trim()) {
+    frame.id = "youtube-player-" + index;
+    frame.dataset.index = String(index);
+    frame.classList.add("youtube-frame");
   }
 
-  backButton.classList.remove("visible");
-  buildLayout();
-  showSettingsButton();
-}
+  frame.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
+  frame.allowFullscreen = true;
+  frame.loading = "eager";
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.src = getStreamURL(data, index);
 
-backButton.addEventListener("click", closeDeathPage);
+  panel.appendChild(frame);
 
-try {
-  const savedCount = localStorage.getItem(COUNT_STORAGE_KEY);
-  if (savedCount) streamCountEl.value = savedCount;
+  const settings = document.createElement("div");
+  settings.className = "stream-settings";
 
-  const savedChat = localStorage.getItem(CHAT_STORAGE_KEY);
-  if (savedChat === "1") chat.classList.add("visible");
+  const platform = document.createElement("select");
+  platform.setAttribute("aria-label", "Stream platform");
+  platform.innerHTML = `
+    <option value="twitch">Twitch</option>
+    <option value="kick">Kick</option>
+    <option value="youtube">YouTube</option>
+  `;
+  platform.value = data.platform;
 
-  streamData = Array.from(
-    { length: Number(streamCountEl.value) || 1 },
-    () => ({ platform: "", channel: "", position: 0 })
-  );
+  const input = document.createElement("input");
+  input.type = "text";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.value = data.channel;
+  input.placeholder = data.platform === "youtube"
+    ? "YouTube URL / Video ID"
+    : "Stream name";
 
-  const savedVideos = loadSavedYouTube();
-  savedVideos.forEach((video, index) => {
-    if (index < streamData.length && video.channel) {
-      streamData[index] = {
-        platform: "youtube",
-        channel: video.channel,
-        position: Number(video.position) || 0
-      };
-    }
+  const load = document.createElement("button");
+  load.textContent = "LOAD";
+
+  platform.addEventListener("change", () => {
+    input.placeholder = platform.value === "youtube"
+      ? "YouTube URL / Video ID"
+      : "Stream name";
   });
-} catch (e) {
-  streamData = Array.from({ length: 1 }, () => ({
-    platform: "", channel: "", position: 0
-  }));
+
+  load.addEventListener("click", () => {
+    const newPlatform = platform.value;
+    const newChannel = input.value.trim();
+
+    if (
+      newPlatform === "youtube" &&
+      newChannel &&
+      !getYouTubeID(newChannel)
+    ) {
+      alert("Invalid YouTube URL or video ID.");
+      return;
+    }
+
+    if (data.platform === "youtube") {
+      const oldPlayer = youtubePlayers.get(frame.id);
+      if (oldPlayer) savePlayerPosition(index, oldPlayer);
+    }
+
+    youtubePlayers.delete(frame.id);
+
+    data.platform = newPlatform;
+    data.channel = newChannel;
+    data.paused = true;
+    data.muted = true;
+
+    if (newPlatform === "youtube" && newChannel) {
+      const videoId = getYouTubeID(newChannel);
+      const oldSaved = youtubeProgress[index];
+
+      if (!oldSaved || oldSaved.channel !== videoId) {
+        saveYouTubeProgress(index, videoId, 0);
+      }
+    } else {
+      delete youtubeProgress[index];
+      writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
+    }
+
+    buildLayout();
+  });
+
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") load.click();
+  });
+
+  settings.appendChild(platform);
+  settings.appendChild(input);
+  settings.appendChild(load);
+  panel.appendChild(settings);
+
+  // Start with the stream settings visible, then let the shared idle timer hide them.
+  settings.classList.add("ui-visible");
+
+  return panel;
 }
+
+/* BUILD LAYOUT */
+
+function buildLayout() {
+  youtubePlayers.forEach((player, frameId) => {
+    const frame = document.getElementById(frameId);
+    if (frame) savePlayerPosition(Number(frame.dataset.index), player);
+  });
+
+  youtubePlayers.clear();
+  layout.innerHTML = "";
+
+  const totalCells = streamData.length + (chatEnabled ? 1 : 0);
+  const grid = getGrid(totalCells);
+
+  layout.style.gridTemplateColumns =
+    `repeat(${grid.columns}, minmax(0, 1fr))`;
+
+  layout.style.gridTemplateRows =
+    `repeat(${grid.rows}, minmax(0, 1fr))`;
+
+  streamData.forEach((data, index) => {
+    layout.appendChild(createStreamPanel(data, index));
+  });
+
+  if (chatEnabled) {
+    const chatPanel = document.createElement("div");
+    chatPanel.className = "chat-panel";
+
+    const chat = document.createElement("iframe");
+    chat.id = "chat";
+    chat.className = "chat-frame";
+    chat.title = "Combined Twitch and Kick chat";
+    chat.loading = "eager";
+
+    chatPanel.appendChild(chat);
+    layout.appendChild(chatPanel);
+    buildChat();
+  }
+
+  if (streamData.some(s => s.platform === "youtube" && s.channel.trim())) {
+    loadYouTubeAPI();
+    if (youtubeAPIReady) initializeYouTubePlayers();
+  }
+
+  // Keep the stream settings in sync with the gear button after rebuilding.
+  setStreamSettingsVisibility(
+    !settingsToggle.classList.contains("idle")
+  );
+}
+
+/* TOPBAR EVENTS */
+
+document.addEventListener("click", e => {
+  if (!topbar.contains(e.target) && e.target !== settingsToggle) {
+    topbar.style.display = "none";
+    settingsPinnedOpen = false;
+    showSettingsButton();
+  }
+});
+
+topbar.addEventListener("click", e => e.stopPropagation());
+
+applyBtn.addEventListener("click", () => {
+  setStreamCount(Number(streamCount.value));
+
+  chatEnabled = chatCheckbox.checked;
+
+  writeStorage(COUNT_STORAGE_KEY, streamData.length);
+  writeStorage(CHAT_STORAGE_KEY, chatEnabled);
+
+  buildLayout();
+
+  topbar.style.display = "none";
+  settingsPinnedOpen = false;
+  showSettingsButton();
+});
+
+/* INITIAL LOAD */
+
+streamCount.value = DEFAULT_COUNT;
+chatCheckbox.checked = chatEnabled;
 
 buildLayout();
 showSettingsButton();
-
-// Save YouTube progress periodically and when leaving/reloading the page.
-setInterval(saveYouTubeProgress, 2000);
-window.addEventListener("beforeunload", saveYouTubeProgress);
-window.addEventListener("pagehide", saveYouTubeProgress);
 </script>
+
 </body>
 </html>
 ```
