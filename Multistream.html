@@ -1,0 +1,1131 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi Stream</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: Arial, sans-serif;
+}
+
+#streamPage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+#layout {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  gap: 2px;
+  background: #000;
+}
+
+.stream-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.stream-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+  z-index: 1;
+}
+
+/* EMPTY STREAM MESSAGE */
+
+.stream-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #777;
+  font-size: 24px;
+  font-weight: bold;
+
+  pointer-events: none;
+  background: #000;
+}
+
+/* STREAM SETTINGS */
+
+.stream-settings {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+
+  display: flex;
+  gap: 5px;
+  align-items: center;
+
+  padding: 6px;
+  border-radius: 7px;
+
+  background: rgba(15,15,15,.94);
+  border: 1px solid #444;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+
+.stream-panel:hover .stream-settings,
+.stream-panel:focus-within .stream-settings {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.stream-settings select,
+.stream-settings input,
+.stream-settings button {
+  height: 32px;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #171717;
+  color: #fff;
+  outline: none;
+}
+
+.stream-settings select {
+  width: 95px;
+  padding: 0 5px;
+}
+
+.stream-settings input {
+  width: 190px;
+  padding: 0 9px;
+}
+
+.stream-settings button {
+  padding: 0 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.stream-settings button:hover {
+  background: #9146ff;
+}
+
+/* CHAT */
+
+.chat-panel {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+#chat {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+}
+
+/* SETTINGS BUTTON */
+
+#settingsToggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100000;
+
+  width: 40px;
+  height: 40px;
+
+  border: 1px solid #444;
+  border-radius: 7px;
+
+  background: rgba(20,20,20,.92);
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 21px;
+  cursor: pointer;
+}
+
+#settingsToggle:hover {
+  background: #9146ff;
+}
+
+/* TOP SETTINGS */
+
+#topbar {
+  position: fixed;
+  top: 10px;
+  left: 60px;
+  z-index: 100001;
+
+  display: none;
+  align-items: center;
+  gap: 8px;
+
+  padding: 7px 9px;
+
+  background: rgba(15,15,15,.96);
+  border: 1px solid #444;
+  border-radius: 7px;
+}
+
+#topbar label {
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+#topbar select,
+#topbar button {
+  height: 32px;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background: #171717;
+  color: #fff;
+}
+
+#topbar select {
+  padding: 0 8px;
+}
+
+#topbar button {
+  padding: 0 13px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#topbar button:hover {
+  background: #9146ff;
+}
+
+/* LAST DEATH */
+
+#lastDeathPage {
+  position: fixed;
+  inset: 0;
+  z-index: 50000;
+
+  width: 100vw;
+  height: 100vh;
+
+  border: 0;
+  background: #000;
+
+  display: none;
+}
+
+/* PAGE ARROW */
+
+#pageArrow {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  z-index: 100001;
+
+  width: 42px;
+  height: 70px;
+
+  border: 1px solid #444;
+  border-radius: 9px 0 0 9px;
+
+  background: rgba(20,20,20,.90);
+  color: white;
+
+  font-size: 25px;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#pageArrow:hover {
+  background: #9146ff;
+  width: 48px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="streamPage">
+  <div id="layout"></div>
+</div>
+
+<iframe
+  id="lastDeathPage"
+  src="https://hiviseobs.com/lastdeath"
+  allow="autoplay; fullscreen">
+</iframe>
+
+<div id="settingsToggle">⚙</div>
+
+<div id="topbar">
+  <label>STREAMS:</label>
+
+  <select id="streamCount">
+    <option value="1">1 Stream</option>
+    <option value="2">2 Streams</option>
+    <option value="3" selected>3 Streams</option>
+    <option value="4">4 Streams</option>
+    <option value="5">5 Streams</option>
+    <option value="6">6 Streams</option>
+    <option value="7">7 Streams</option>
+    <option value="8">8 Streams</option>
+    <option value="9">9 Streams</option>
+    <option value="10">10 Streams</option>
+    <option value="11">11 Streams</option>
+    <option value="12">12 Streams</option>
+  </select>
+
+  <button id="applyBtn">APPLY</button>
+</div>
+
+<button id="pageArrow" title="Last Death">➜</button>
+
+<script>
+
+/* =========================================================
+   ALWAYS START COMPLETELY FRESH
+   ========================================================= */
+
+localStorage.removeItem("multiStreamData");
+
+const DEFAULT_STREAM_COUNT = 3;
+
+function createEmptyStream() {
+  return {
+    platform: "twitch",
+    channel: "",
+    muted: true,
+    paused: true
+  };
+}
+
+let streamData = Array.from(
+  { length: DEFAULT_STREAM_COUNT },
+  () => createEmptyStream()
+);
+
+let showingLastDeath = false;
+
+
+/* =========================================================
+   ELEMENTS
+   ========================================================= */
+
+const layout = document.getElementById("layout");
+const streamPage = document.getElementById("streamPage");
+const lastDeathPage = document.getElementById("lastDeathPage");
+
+const settingsToggle = document.getElementById("settingsToggle");
+const topbar = document.getElementById("topbar");
+const streamCount = document.getElementById("streamCount");
+const applyBtn = document.getElementById("applyBtn");
+const pageArrow = document.getElementById("pageArrow");
+
+
+/* =========================================================
+   SAVE CURRENT SESSION
+   ========================================================= */
+
+function saveData() {
+  localStorage.setItem(
+    "multiStreamData",
+    JSON.stringify(streamData)
+  );
+}
+
+
+/* =========================================================
+   STREAM COUNT
+   ========================================================= */
+
+function setStreamCount(count) {
+
+  count = Number(count);
+
+  while (streamData.length < count) {
+    streamData.push(createEmptyStream());
+  }
+
+  if (streamData.length > count) {
+    streamData.length = count;
+  }
+}
+
+
+/* =========================================================
+   GRID LAYOUT
+   ========================================================= */
+
+function getGrid(count) {
+
+  switch (count) {
+
+    case 1:
+      return {
+        columns: 2,
+        rows: 1,
+        chat: "normal"
+      };
+
+    case 2:
+      return {
+        columns: 2,
+        rows: 2,
+        chat: "full"
+      };
+
+    case 3:
+      return {
+        columns: 2,
+        rows: 2,
+        chat: "normal"
+      };
+
+    case 4:
+      return {
+        columns: 2,
+        rows: 3,
+        chat: "full"
+      };
+
+    case 5:
+      return {
+        columns: 3,
+        rows: 2,
+        chat: "full"
+      };
+
+    case 6:
+      return {
+        columns: 3,
+        rows: 3,
+        chat: "full"
+      };
+
+    case 7:
+      return {
+        columns: 4,
+        rows: 2,
+        chat: "full"
+      };
+
+    case 8:
+      return {
+        columns: 3,
+        rows: 3,
+        chat: "full"
+      };
+
+    case 9:
+      return {
+        columns: 4,
+        rows: 3,
+        chat: "full"
+      };
+
+    case 10:
+      return {
+        columns: 4,
+        rows: 3,
+        chat: "full"
+      };
+
+    case 11:
+      return {
+        columns: 4,
+        rows: 3,
+        chat: "full"
+      };
+
+    case 12:
+      return {
+        columns: 4,
+        rows: 4,
+        chat: "full"
+      };
+
+    default:
+      return {
+        columns: 2,
+        rows: 2,
+        chat: "normal"
+      };
+  }
+}
+
+
+/* =========================================================
+   STREAM URL
+   ========================================================= */
+
+function getStreamURL(data) {
+
+  const platform = data.platform;
+  const channel = data.channel.trim();
+
+  if (!channel) {
+    return "about:blank";
+  }
+
+  const paused = data.paused;
+  const muted = data.muted;
+
+
+  /* TWITCH */
+
+  if (platform === "twitch") {
+
+    return (
+      "https://player.twitch.tv/?" +
+      "channel=" + encodeURIComponent(channel) +
+      "&parent=" + encodeURIComponent(window.location.hostname) +
+      "&autoplay=" + (paused ? "false" : "true") +
+      "&muted=" + (muted ? "true" : "false")
+    );
+  }
+
+
+  /* KICK */
+
+  if (platform === "kick") {
+
+    return (
+      "https://player.kick.com/" +
+      encodeURIComponent(channel) +
+      "?autoplay=" + (paused ? "false" : "true") +
+      "&muted=" + (muted ? "true" : "false")
+    );
+  }
+
+
+  /* YOUTUBE */
+
+  if (platform === "youtube") {
+
+    const videoId = getYouTubeID(channel);
+
+    if (!videoId) {
+      return "about:blank";
+    }
+
+    return (
+      "https://www.youtube.com/embed/" +
+      encodeURIComponent(videoId) +
+      "?autoplay=" + (paused ? "0" : "1") +
+      "&mute=" + (muted ? "1" : "0") +
+      "&rel=0"
+    );
+  }
+
+  return "about:blank";
+}
+
+
+/* =========================================================
+   YOUTUBE ID
+   ========================================================= */
+
+function getYouTubeID(input) {
+
+  input = input.trim();
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) {
+    return input;
+  }
+
+  try {
+
+    const url = new URL(input);
+
+    if (url.hostname.includes("youtu.be")) {
+      return url.pathname.substring(1).split("/")[0];
+    }
+
+    if (url.searchParams.get("v")) {
+      return url.searchParams.get("v");
+    }
+
+    const parts = url.pathname.split("/");
+
+    const index = parts.findIndex(
+      part =>
+        part === "live" ||
+        part === "shorts" ||
+        part === "embed"
+    );
+
+    if (index !== -1 && parts[index + 1]) {
+      return parts[index + 1];
+    }
+
+  } catch (e) {}
+
+  return null;
+}
+
+
+/* =========================================================
+   BUILD LAYOUT
+   ========================================================= */
+
+function buildLayout() {
+
+  layout.innerHTML = "";
+
+  const count = streamData.length;
+  const grid = getGrid(count);
+
+  layout.style.gridTemplateColumns =
+    `repeat(${grid.columns}, minmax(0, 1fr))`;
+
+  layout.style.gridTemplateRows =
+    `repeat(${grid.rows}, minmax(0, 1fr))`;
+
+
+  /* STREAMS */
+
+  streamData.forEach((data, index) => {
+
+    const panel = document.createElement("div");
+
+    panel.className = "stream-panel";
+    panel.dataset.index = index;
+
+
+    /* EMPTY STREAM MESSAGE */
+
+    const placeholder = document.createElement("div");
+
+    placeholder.className = "stream-placeholder";
+
+    placeholder.textContent = "Insert Stream name";
+
+    if (data.channel.trim() !== "") {
+      placeholder.style.display = "none";
+    }
+
+    panel.appendChild(placeholder);
+
+
+    /* STREAM IFRAME */
+
+    const frame = document.createElement("iframe");
+
+    frame.className = "stream-frame";
+
+    frame.allow =
+      "autoplay; fullscreen; encrypted-media; picture-in-picture";
+
+    frame.src = getStreamURL(data);
+
+    panel.appendChild(frame);
+
+
+    /* SETTINGS */
+
+    const settings = document.createElement("div");
+
+    settings.className = "stream-settings";
+
+
+    const platform = document.createElement("select");
+
+    platform.innerHTML = `
+      <option value="twitch">Twitch</option>
+      <option value="kick">Kick</option>
+      <option value="youtube">YouTube</option>
+    `;
+
+    platform.value = data.platform;
+
+
+    const input = document.createElement("input");
+
+    input.type = "text";
+
+    input.placeholder =
+      data.platform === "youtube"
+        ? "YouTube URL / Video ID"
+        : "Stream name";
+
+    input.value = data.channel;
+
+
+    const load = document.createElement("button");
+
+    load.textContent = "LOAD";
+
+
+    platform.addEventListener("change", () => {
+
+      data.platform = platform.value;
+
+      input.placeholder =
+        data.platform === "youtube"
+          ? "YouTube URL / Video ID"
+          : "Stream name";
+    });
+
+
+    load.addEventListener("click", () => {
+
+      data.platform = platform.value;
+
+      data.channel = input.value.trim();
+
+      data.paused = true;
+      data.muted = true;
+
+      saveData();
+
+
+      const newFrame =
+        document.createElement("iframe");
+
+      newFrame.className = "stream-frame";
+
+      newFrame.allow =
+        "autoplay; fullscreen; encrypted-media; picture-in-picture";
+
+      newFrame.src = getStreamURL(data);
+
+      frame.replaceWith(newFrame);
+
+
+      if (data.channel) {
+        placeholder.style.display = "none";
+      } else {
+        placeholder.style.display = "flex";
+      }
+
+
+      resetAndBuildChat();
+    });
+
+
+    input.addEventListener("keydown", e => {
+
+      if (e.key === "Enter") {
+        load.click();
+      }
+    });
+
+
+    settings.appendChild(platform);
+    settings.appendChild(input);
+    settings.appendChild(load);
+
+    panel.appendChild(settings);
+
+    layout.appendChild(panel);
+  });
+
+
+  /* CHAT */
+
+  const chatPanel = document.createElement("div");
+
+  chatPanel.className = "chat-panel";
+
+
+  if (grid.chat === "full") {
+
+    chatPanel.style.gridColumn =
+      `1 / span ${grid.columns}`;
+  }
+
+
+  const chat = document.createElement("iframe");
+
+  chat.id = "chat";
+
+  chatPanel.appendChild(chat);
+
+  layout.appendChild(chatPanel);
+
+  buildChat();
+}
+
+
+/* =========================================================
+   BUILD COMBINED CHAT
+   ========================================================= */
+
+function buildChat() {
+
+  const chat = document.getElementById("chat");
+
+  if (!chat) return;
+
+
+  const twitchChannels = streamData
+    .filter(s =>
+      s.platform === "twitch" &&
+      s.channel.trim() !== ""
+    )
+    .map(s => s.channel.trim());
+
+
+  const kickChannels = streamData
+    .filter(s =>
+      s.platform === "kick" &&
+      s.channel.trim() !== ""
+    )
+    .map(s => s.channel.trim());
+
+
+  let primary = "";
+  let merge = "";
+  let kickmerge = "";
+
+
+  if (twitchChannels.length > 0) {
+
+    primary = twitchChannels[0];
+
+    merge = twitchChannels
+      .slice(1)
+      .join(",");
+
+    kickmerge = kickChannels.join(",");
+
+  } else if (kickChannels.length > 0) {
+
+    primary = kickChannels[0];
+
+    kickmerge = kickChannels
+      .slice(1)
+      .join(",");
+  }
+
+
+  /* NO STREAMS = BLANK CHAT */
+
+  if (!primary) {
+
+    chat.src = "about:blank";
+
+    return;
+  }
+
+
+  const params = new URLSearchParams();
+
+  params.set("channel", primary);
+  params.set("size", "1");
+  params.set("font", "2");
+  params.set("panel", "1");
+  params.set("hvbeta", "1");
+  params.set("highlight_first", "true");
+  params.set("bots", "true");
+  params.set("sysmsg", "false");
+  params.set("esize", "44");
+
+
+  if (merge) {
+    params.set("merge", merge);
+  }
+
+  if (kickmerge) {
+    params.set("kickmerge", kickmerge);
+  }
+
+
+  chat.src =
+    "https://hiviseobs.com/chat/v2/?" +
+    params.toString();
+}
+
+
+/* =========================================================
+   RESET CHAT
+   ========================================================= */
+
+function resetAndBuildChat() {
+
+  const chat = document.getElementById("chat");
+
+  if (!chat) return;
+
+  chat.src = "about:blank";
+
+  setTimeout(() => {
+
+    buildChat();
+
+  }, 100);
+}
+
+
+/* =========================================================
+   SETTINGS MENU
+   ========================================================= */
+
+settingsToggle.addEventListener("click", e => {
+
+  e.stopPropagation();
+
+  if (topbar.style.display === "flex") {
+
+    topbar.style.display = "none";
+
+  } else {
+
+    streamCount.value = streamData.length;
+
+    topbar.style.display = "flex";
+  }
+});
+
+
+document.addEventListener("click", e => {
+
+  if (
+    !topbar.contains(e.target) &&
+    e.target !== settingsToggle
+  ) {
+
+    topbar.style.display = "none";
+  }
+});
+
+
+topbar.addEventListener("click", e => {
+  e.stopPropagation();
+});
+
+
+/* =========================================================
+   APPLY STREAM COUNT
+   ========================================================= */
+
+applyBtn.addEventListener("click", () => {
+
+  const count = Number(streamCount.value);
+
+  setStreamCount(count);
+
+  saveData();
+
+  buildLayout();
+
+  topbar.style.display = "none";
+});
+
+
+/* =========================================================
+   PAUSE + MUTE ALL STREAMS
+   ========================================================= */
+
+function pauseAndMuteStreams() {
+
+  streamData.forEach(data => {
+
+    data.paused = true;
+    data.muted = true;
+
+  });
+
+  saveData();
+
+
+  document.querySelectorAll(".stream-panel")
+    .forEach((panel, index) => {
+
+      const data = streamData[index];
+
+      const oldFrame =
+        panel.querySelector(".stream-frame");
+
+      if (!oldFrame) return;
+
+
+      const newFrame =
+        document.createElement("iframe");
+
+      newFrame.className = "stream-frame";
+
+      newFrame.allow =
+        "autoplay; fullscreen; encrypted-media; picture-in-picture";
+
+      newFrame.src = getStreamURL(data);
+
+      oldFrame.replaceWith(newFrame);
+    });
+}
+
+
+/* =========================================================
+   STOP LAST DEATH
+   ========================================================= */
+
+function pauseLastDeath() {
+
+  lastDeathPage.src = "about:blank";
+
+  setTimeout(() => {
+
+    lastDeathPage.src =
+      "https://hiviseobs.com/lastdeath";
+
+  }, 80);
+}
+
+
+/* =========================================================
+   SHOW LAST DEATH
+   ========================================================= */
+
+function showLastDeath() {
+
+  showingLastDeath = true;
+
+  pauseAndMuteStreams();
+
+  streamPage.style.display = "none";
+
+  lastDeathPage.style.display = "block";
+
+  settingsToggle.style.display = "none";
+
+  topbar.style.display = "none";
+
+  pageArrow.textContent = "←";
+
+  pageArrow.title = "Back to streams";
+}
+
+
+/* =========================================================
+   SHOW STREAMS
+   ========================================================= */
+
+function showStreams() {
+
+  if (showingLastDeath) {
+    pauseLastDeath();
+  }
+
+  lastDeathPage.style.display = "none";
+
+  streamPage.style.display = "block";
+
+  settingsToggle.style.display = "flex";
+
+
+  streamData.forEach(data => {
+
+    data.paused = true;
+    data.muted = true;
+
+  });
+
+  saveData();
+
+
+  document.querySelectorAll(".stream-panel")
+    .forEach((panel, index) => {
+
+      const data = streamData[index];
+
+      const oldFrame =
+        panel.querySelector(".stream-frame");
+
+      if (!oldFrame) return;
+
+
+      const newFrame =
+        document.createElement("iframe");
+
+      newFrame.className = "stream-frame";
+
+      newFrame.allow =
+        "autoplay; fullscreen; encrypted-media; picture-in-picture";
+
+      newFrame.src = getStreamURL(data);
+
+      oldFrame.replaceWith(newFrame);
+    });
+
+
+  showingLastDeath = false;
+
+  pageArrow.textContent = "➜";
+
+  pageArrow.title = "Last Death";
+}
+
+
+/* =========================================================
+   PAGE ARROW
+   ========================================================= */
+
+pageArrow.addEventListener("click", () => {
+
+  if (showingLastDeath) {
+
+    showStreams();
+
+  } else {
+
+    showLastDeath();
+  }
+});
+
+
+/* =========================================================
+   INITIAL LOAD
+   ========================================================= */
+
+/*
+   Every visit starts with:
+   - Empty stream boxes
+   - "Insert Stream name"
+   - Empty chat
+   - Paused streams
+   - Muted streams
+*/
+
+streamCount.value = DEFAULT_STREAM_COUNT;
+
+buildLayout();
+
+</script>
+
+</body>
+</html>
+```
