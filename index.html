@@ -7,9 +7,7 @@
 <title>Multi Stream</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -32,12 +30,9 @@ html, body {
   display: grid;
   gap: 2px;
   background: #000;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 
-.stream-panel,
-.chat-panel {
+.stream-panel, .chat-panel {
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -45,8 +40,7 @@ html, body {
   background: #000;
 }
 
-.stream-frame,
-.chat-frame {
+.stream-frame, .chat-frame {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -65,11 +59,12 @@ html, body {
   color: #777;
   font-size: clamp(14px, 2vw, 24px);
   font-weight: bold;
+  text-align: center;
+  padding: 10px;
   pointer-events: none;
   background: #000;
 }
 
-```css
 .stream-settings {
   position: absolute;
   top: 8px;
@@ -77,6 +72,7 @@ html, body {
   right: auto;
   z-index: 20;
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
   align-items: center;
   padding: 6px;
@@ -94,8 +90,6 @@ html, body {
   opacity: 1;
   pointer-events: auto;
 }
-```
-
 
 .stream-settings select,
 .stream-settings input,
@@ -131,9 +125,7 @@ html, body {
   background: #9146ff;
 }
 
-.chat-frame {
-  display: block;
-}
+.chat-frame { display: block; }
 
 #settingsToggle {
   position: fixed;
@@ -184,9 +176,7 @@ html, body {
   color: #fff;
 }
 
-#topbar select {
-  padding: 0 8px;
-}
+#topbar select { padding: 0 8px; }
 
 #topbar button {
   padding: 0 13px;
@@ -215,22 +205,14 @@ html, body {
 @media (max-width: 600px) {
   .stream-settings {
     top: 4px;
-    right: 4px;
+    left: 4px;
     gap: 3px;
     padding: 4px;
   }
 
-  .stream-settings select {
-    width: 75px;
-  }
-
-  .stream-settings input {
-    width: 100px;
-  }
-
-  .stream-settings button {
-    padding: 0 7px;
-  }
+  .stream-settings select { width: 75px; }
+  .stream-settings input { width: 100px; }
+  .stream-settings button { padding: 0 7px; }
 }
 </style>
 </head>
@@ -249,7 +231,7 @@ html, body {
   <select id="streamCount">
     <option value="1">1 Stream</option>
     <option value="2">2 Streams</option>
-    <option value="3" selected>3 Streams</option>
+    <option value="3">3 Streams</option>
     <option value="4">4 Streams</option>
     <option value="5">5 Streams</option>
     <option value="6">6 Streams</option>
@@ -270,9 +252,31 @@ html, body {
 </div>
 
 <script>
-/* ALWAYS START FRESH WHEN THE PAGE IS OPENED */
+/* STORAGE
+   Only YouTube videos and their playback positions persist.
+   Twitch and Kick streams are deliberately never restored.
+*/
+
+const YOUTUBE_STORAGE_KEY = "multiStreamYouTubeProgress";
+const COUNT_STORAGE_KEY = "multiStreamLayoutCount";
+const CHAT_STORAGE_KEY = "multiStreamChatEnabled";
 
 const DEFAULT_STREAM_COUNT = 3;
+
+function readStorage(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : JSON.parse(value);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {}
+}
 
 function createEmptyStream() {
   return {
@@ -283,12 +287,48 @@ function createEmptyStream() {
   };
 }
 
+const savedCount = Number(
+  readStorage(COUNT_STORAGE_KEY, DEFAULT_STREAM_COUNT)
+);
+
+const DEFAULT_COUNT =
+  Number.isInteger(savedCount) && savedCount >= 1 && savedCount <= 12
+    ? savedCount
+    : DEFAULT_STREAM_COUNT;
+
+let chatEnabled = readStorage(CHAT_STORAGE_KEY, true) !== false;
+
 let streamData = Array.from(
-  { length: DEFAULT_STREAM_COUNT },
+  { length: DEFAULT_COUNT },
   () => createEmptyStream()
 );
 
-let chatEnabled = true;
+let youtubeProgress = readStorage(YOUTUBE_STORAGE_KEY, {});
+
+if (
+  !youtubeProgress ||
+  typeof youtubeProgress !== "object" ||
+  Array.isArray(youtubeProgress)
+) {
+  youtubeProgress = {};
+}
+
+/* RESTORE YOUTUBE ONLY */
+
+for (let i = 0; i < streamData.length; i++) {
+  const saved = youtubeProgress[i];
+
+  if (saved && saved.platform === "youtube" && saved.channel) {
+    streamData[i] = {
+      platform: "youtube",
+      channel: saved.channel,
+      muted: true,
+      paused: true
+    };
+  }
+}
+
+/* ELEMENTS */
 
 const layout = document.getElementById("layout");
 const settingsToggle = document.getElementById("settingsToggle");
@@ -297,19 +337,9 @@ const streamCount = document.getElementById("streamCount");
 const chatCheckbox = document.getElementById("chatEnabled");
 const applyBtn = document.getElementById("applyBtn");
 
-/* STREAM COUNT */
-
-function setStreamCount(count) {
-  count = Number(count);
-
-  while (streamData.length < count) {
-    streamData.push(createEmptyStream());
-  }
-
-  if (streamData.length > count) {
-    streamData.length = count;
-  }
-}
+const youtubePlayers = new Map();
+let youtubeAPIReady = false;
+let youtubeAPILoading = false;
 
 /* YOUTUBE VIDEO ID */
 
@@ -323,13 +353,9 @@ function getYouTubeID(input) {
   try {
     const url = new URL(input);
     const host = url.hostname.toLowerCase();
-
     let id = "";
 
-    if (
-      host === "youtu.be" ||
-      host === "www.youtu.be"
-    ) {
+    if (host === "youtu.be" || host === "www.youtu.be") {
       id = url.pathname.split("/").filter(Boolean)[0] || "";
     } else if (
       host === "youtube.com" ||
@@ -345,36 +371,166 @@ function getYouTubeID(input) {
           ["embed", "live", "shorts", "v"].includes(part)
         );
 
-        if (index !== -1) {
-          id = parts[index + 1] || "";
-        }
+        if (index !== -1) id = parts[index + 1] || "";
       }
     }
 
     return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
-
   } catch (e) {
     return null;
   }
 }
 
-/* BUILD STREAM URL */
+/* SAVE YOUTUBE VIDEO AND POSITION */
 
-function getStreamURL(data) {
+function saveYouTubeProgress(index, videoId, seconds) {
+  if (!videoId) return;
+
+  youtubeProgress[index] = {
+    platform: "youtube",
+    channel: videoId,
+    position: Math.max(0, Number(seconds) || 0)
+  };
+
+  writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
+}
+
+function savePlayerPosition(index, player) {
+  try {
+    if (
+      player &&
+      typeof player.getCurrentTime === "function" &&
+      typeof player.getPlayerState === "function"
+    ) {
+      const time = player.getCurrentTime();
+
+      if (Number.isFinite(time)) {
+        const data = streamData[index];
+        if (data && data.platform === "youtube") {
+          saveYouTubeProgress(
+            index,
+            getYouTubeID(data.channel),
+            time
+          );
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+/* LOAD YOUTUBE IFRAME API */
+
+function loadYouTubeAPI() {
+  if (youtubeAPIReady || youtubeAPILoading) return;
+
+  youtubeAPILoading = true;
+
+  window.onYouTubeIframeAPIReady = function() {
+    youtubeAPIReady = true;
+    youtubeAPILoading = false;
+    initializeYouTubePlayers();
+  };
+
+  const script = document.createElement("script");
+  script.src = "https://www.youtube.com/iframe_api";
+  script.async = true;
+
+  script.onerror = function() {
+    youtubeAPILoading = false;
+  };
+
+  document.head.appendChild(script);
+}
+
+/* INITIALIZE YOUTUBE PLAYER AND RESUME POSITION */
+
+function initializeYouTubePlayers() {
+  if (!youtubeAPIReady || !window.YT || !YT.Player) return;
+
+  document.querySelectorAll(".youtube-frame").forEach(frame => {
+    if (youtubePlayers.has(frame.id)) return;
+
+    const index = Number(frame.dataset.index);
+    const data = streamData[index];
+
+    if (!data || data.platform !== "youtube") return;
+
+    const videoId = getYouTubeID(data.channel);
+    if (!videoId) return;
+
+    const saved = youtubeProgress[index];
+    const startAt = saved && saved.channel === videoId
+      ? Math.max(0, Number(saved.position) || 0)
+      : 0;
+
+    const player = new YT.Player(frame.id, {
+      events: {
+        onReady: function(event) {
+          try {
+            event.target.mute();
+
+            if (startAt > 0) {
+              event.target.seekTo(startAt, true);
+            }
+          } catch (e) {}
+        },
+
+        onStateChange: function(event) {
+          if (
+            event.data === YT.PlayerState.PLAYING ||
+            event.data === YT.PlayerState.PAUSED ||
+            event.data === YT.PlayerState.ENDED
+          ) {
+            savePlayerPosition(index, event.target);
+          }
+        }
+      }
+    });
+
+    youtubePlayers.set(frame.id, player);
+  });
+}
+
+/* SAVE POSITION PERIODICALLY */
+
+setInterval(() => {
+  youtubePlayers.forEach((player, frameId) => {
+    const frame = document.getElementById(frameId);
+
+    if (frame) {
+      savePlayerPosition(Number(frame.dataset.index), player);
+    }
+  });
+}, 1000);
+
+/* SAVE BEFORE REFRESH OR NAVIGATION */
+
+window.addEventListener("pagehide", () => {
+  youtubePlayers.forEach((player, frameId) => {
+    const frame = document.getElementById(frameId);
+
+    if (frame) {
+      savePlayerPosition(Number(frame.dataset.index), player);
+    }
+  });
+});
+
+/* STREAM URL */
+
+function getStreamURL(data, index) {
   const platform = data.platform;
   const channel = data.channel.trim();
 
   if (!channel) return "about:blank";
 
   if (platform === "twitch") {
+    const parent = window.location.hostname || "localhost";
+
     return (
       "https://player.twitch.tv/?" +
       "channel=" + encodeURIComponent(channel) +
-      "&parent=" + encodeURIComponent(
-        window.location.hostname || "localhost"
-      ) +
-      "&autoplay=" + (data.paused ? "false" : "true") +
-      "&muted=" + (data.muted ? "true" : "false")
+      "&parent=" + encodeURIComponent(parent) +
+      "&autoplay=false&muted=true"
     );
   }
 
@@ -382,8 +538,7 @@ function getStreamURL(data) {
     return (
       "https://player.kick.com/" +
       encodeURIComponent(channel) +
-      "?autoplay=" + (data.paused ? "false" : "true") +
-      "&muted=" + (data.muted ? "true" : "false")
+      "?autoplay=false&muted=true"
     );
   }
 
@@ -392,21 +547,41 @@ function getStreamURL(data) {
 
     if (!videoId) return "about:blank";
 
+    const saved = youtubeProgress[index];
+    const startAt =
+      saved && saved.channel === videoId
+        ? Math.max(0, Math.floor(Number(saved.position) || 0))
+        : 0;
+
+    const params = new URLSearchParams({
+      autoplay: "0",
+      mute: "1",
+      controls: "1",
+      rel: "0",
+      playsinline: "1",
+      enablejsapi: "1"
+    });
+
+    if (window.location.protocol === "http:" ||
+        window.location.protocol === "https:") {
+      params.set("origin", window.location.origin);
+    }
+
+    if (startAt > 0) {
+      params.set("start", String(startAt));
+    }
+
     return (
       "https://www.youtube.com/embed/" +
       encodeURIComponent(videoId) +
-      "?autoplay=" + (data.paused ? "0" : "1") +
-      "&mute=" + (data.muted ? "1" : "0") +
-      "&controls=1" +
-      "&rel=0" +
-      "&playsinline=1"
+      "?" + params.toString()
     );
   }
 
   return "about:blank";
 }
 
-/* COMBINED CHAT */
+/* CHAT */
 
 function buildChat() {
   const chat = document.getElementById("chat");
@@ -454,29 +629,41 @@ function buildChat() {
   if (merge) params.set("merge", merge);
   if (kickmerge) params.set("kickmerge", kickmerge);
 
-  chat.src =
-    "https://hiviseobs.com/chat/v2/?" + params.toString();
+  chat.src = "https://hiviseobs.com/chat/v2/?" + params.toString();
 }
 
-/* GRID LAYOUT
-   The chat counts as one grid cell when enabled.
-   When disabled, every cell belongs to a stream.
-*/
+/* STREAM COUNT */
+
+function setStreamCount(count) {
+  count = Number(count);
+
+  while (streamData.length < count) {
+    streamData.push(createEmptyStream());
+  }
+
+  if (streamData.length > count) {
+    streamData.length = count;
+  }
+
+  // Remove saved YouTube videos belonging to deleted slots.
+  Object.keys(youtubeProgress).forEach(key => {
+    if (Number(key) >= count) {
+      delete youtubeProgress[key];
+    }
+  });
+
+  writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
+}
+
+/* GRID */
 
 function getGrid(total) {
   let columns;
 
-  if (total <= 2) {
-    columns = total;
-  } else if (total <= 4) {
-    columns = 2;
-  } else if (total <= 6) {
-    columns = 3;
-  } else if (total <= 9) {
-    columns = 3;
-  } else {
-    columns = 4;
-  }
+  if (total <= 2) columns = total;
+  else if (total <= 4) columns = 2;
+  else if (total <= 9) columns = 3;
+  else columns = 4;
 
   return {
     columns,
@@ -484,16 +671,15 @@ function getGrid(total) {
   };
 }
 
-/* CREATE A STREAM PANEL */
+/* STREAM PANEL */
 
 function createStreamPanel(data, index) {
   const panel = document.createElement("div");
   panel.className = "stream-panel";
-  panel.dataset.index = index;
 
   const placeholder = document.createElement("div");
   placeholder.className = "stream-placeholder";
-  placeholder.textContent = "Insert Stream name";
+  placeholder.textContent = "Insert Stream Name or Video ID";
 
   if (data.channel.trim()) {
     placeholder.style.display = "none";
@@ -503,12 +689,19 @@ function createStreamPanel(data, index) {
 
   const frame = document.createElement("iframe");
   frame.className = "stream-frame";
+
+  if (data.platform === "youtube" && data.channel.trim()) {
+    frame.id = "youtube-player-" + index;
+    frame.dataset.index = String(index);
+    frame.classList.add("youtube-frame");
+  }
+
   frame.allow =
     "autoplay; fullscreen; encrypted-media; picture-in-picture";
   frame.allowFullscreen = true;
   frame.loading = "eager";
   frame.referrerPolicy = "strict-origin-when-cross-origin";
-  frame.src = getStreamURL(data);
+  frame.src = getStreamURL(data, index);
 
   panel.appendChild(frame);
 
@@ -532,7 +725,7 @@ function createStreamPanel(data, index) {
   input.placeholder = data.platform === "youtube"
     ? "YouTube URL / Video ID"
     : "Stream name";
-  input.setAttribute("aria-label", "Channel name or video URL");
+  input.setAttribute("aria-label", "Stream name or YouTube URL");
 
   const load = document.createElement("button");
   load.textContent = "LOAD";
@@ -544,43 +737,47 @@ function createStreamPanel(data, index) {
   });
 
   load.addEventListener("click", () => {
-    const newChannel = input.value.trim();
     const newPlatform = platform.value;
+    const newChannel = input.value.trim();
 
     if (
       newPlatform === "youtube" &&
       newChannel &&
       !getYouTubeID(newChannel)
     ) {
-      alert(
-        "That YouTube URL or video ID is not valid. " +
-        "Paste a normal YouTube video, Shorts, or live URL."
-      );
+      alert("Invalid YouTube URL or video ID.");
       return;
     }
 
+    // Save the old YouTube position before replacing this panel.
+    if (data.platform === "youtube") {
+      const oldPlayer = youtubePlayers.get(frame.id);
+      if (oldPlayer) savePlayerPosition(index, oldPlayer);
+    }
+
+    // Remove any old player instance for this slot.
+    youtubePlayers.delete(frame.id);
+
     data.platform = newPlatform;
     data.channel = newChannel;
-
-    // Every newly loaded stream starts paused and muted.
     data.paused = true;
     data.muted = true;
 
-    const newFrame = document.createElement("iframe");
-    newFrame.className = "stream-frame";
-    newFrame.allow =
-      "autoplay; fullscreen; encrypted-media; picture-in-picture";
-    newFrame.allowFullscreen = true;
-    newFrame.loading = "eager";
-    newFrame.referrerPolicy = "strict-origin-when-cross-origin";
-    newFrame.src = getStreamURL(data);
+    // Remember YouTube videos only.
+    if (newPlatform === "youtube" && newChannel) {
+      const videoId = getYouTubeID(newChannel);
+      const oldSaved = youtubeProgress[index];
 
-    frame.replaceWith(newFrame);
+      if (!oldSaved || oldSaved.channel !== videoId) {
+        saveYouTubeProgress(index, videoId, 0);
+      }
+    } else {
+      delete youtubeProgress[index];
+      writeStorage(YOUTUBE_STORAGE_KEY, youtubeProgress);
+    }
 
-    placeholder.style.display =
-      data.channel ? "none" : "flex";
-
-    resetAndBuildChat();
+    // Rebuild so the correct player type and controls are created.
+    buildLayout();
   });
 
   input.addEventListener("keydown", e => {
@@ -595,25 +792,19 @@ function createStreamPanel(data, index) {
   return panel;
 }
 
-/* REBUILD CHAT AFTER A STREAM CHANGE */
-
-function resetAndBuildChat() {
-  const chat = document.getElementById("chat");
-
-  if (!chat || !chatEnabled) return;
-
-  chat.src = "about:blank";
-
-  setTimeout(() => {
-    if (chatEnabled && document.getElementById("chat") === chat) {
-      buildChat();
-    }
-  }, 100);
-}
-
-/* BUILD EVERYTHING */
+/* BUILD LAYOUT */
 
 function buildLayout() {
+  // Save positions before replacing existing iframe elements.
+  youtubePlayers.forEach((player, frameId) => {
+    const frame = document.getElementById(frameId);
+
+    if (frame) {
+      savePlayerPosition(Number(frame.dataset.index), player);
+    }
+  });
+
+  youtubePlayers.clear();
   layout.innerHTML = "";
 
   const totalCells = streamData.length + (chatEnabled ? 1 : 0);
@@ -638,12 +829,24 @@ function buildLayout() {
     chat.className = "chat-frame";
     chat.title = "Combined Twitch and Kick chat";
     chat.loading = "eager";
-    chat.referrerPolicy = "strict-origin-when-cross-origin";
 
     chatPanel.appendChild(chat);
     layout.appendChild(chatPanel);
 
     buildChat();
+  }
+
+  if (streamData.some(
+    (data, index) =>
+      data.platform === "youtube" &&
+      data.channel.trim() &&
+      !!document.getElementById("youtube-player-" + index)
+  )) {
+    loadYouTubeAPI();
+
+    if (youtubeAPIReady) {
+      initializeYouTubePlayers();
+    }
   }
 }
 
@@ -671,22 +874,24 @@ topbar.addEventListener("click", e => {
   e.stopPropagation();
 });
 
-/* APPLY STREAM COUNT AND CHAT SETTING */
+/* APPLY SETTINGS */
 
 applyBtn.addEventListener("click", () => {
   setStreamCount(Number(streamCount.value));
 
   chatEnabled = chatCheckbox.checked;
 
-  buildLayout();
+  writeStorage(COUNT_STORAGE_KEY, streamData.length);
+  writeStorage(CHAT_STORAGE_KEY, chatEnabled);
 
+  buildLayout();
   topbar.style.display = "none";
 });
 
-/* INITIAL LOAD: EMPTY STREAMS, CHAT ENABLED */
+/* INITIAL LOAD */
 
-streamCount.value = DEFAULT_STREAM_COUNT;
-chatCheckbox.checked = true;
+streamCount.value = DEFAULT_COUNT;
+chatCheckbox.checked = chatEnabled;
 
 buildLayout();
 </script>
